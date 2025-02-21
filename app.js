@@ -477,10 +477,46 @@ async function connectWallet() {
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    // Network check
-    const network = await provider.getNetwork();
+    // Network check and switch
+    let network = await provider.getNetwork();
     if (network.chainId !== CHAIN_ID) {
-      return alert(`Switch to Chain ID ${CHAIN_ID}`);
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: ethers.utils.hexValue(CHAIN_ID) }],
+        });
+        // Re-check the network after switching
+        network = await provider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
+          throw new Error("Network switch failed");
+        }
+      } catch (switchError) {
+        // If the chain hasn't been added to MetaMask, error code 4902 will be returned
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: ethers.utils.hexValue(CHAIN_ID),
+                chainName: "Monad Testnet",
+                rpcUrls: [RPC_URL],
+                nativeCurrency: {
+                  name: "Mon",
+                  symbol: "Mon",
+                  decimals: 18,
+                },
+                blockExplorerUrls: ["https://testnet-explorer.monad.xyz"],
+              }],
+            });
+          } catch (addError) {
+            console.error("Error adding chain:", addError);
+            return alert("Please add the correct network to your wallet.");
+          }
+        } else {
+          console.error("Error switching chain:", switchError);
+          return alert("Please switch to the correct network.");
+        }
+      }
     }
 
     // Initialize contracts
