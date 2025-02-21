@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe DApp</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Include ethers.js from CDN -->
+  <script src="ethers.js" type="application/javascript"></script>
+</head>
+<body>
+  <header>
+    <h1>Monad Tic Tac Toe</h1>
+    <button id="connectWalletBtn">Connect Wallet</button>
+    <span id="userAddress"></span>
+  </header>
+
+  <section id="balanceSection">
+    <h2>Token Balance</h2>
+    <p id="tokenBalance">Loading...</p>
+  </section>
+
+  <section id="betSection">
+    <h2>Place Your Bet</h2>
+    <input type="number" id="betAmount" placeholder="Enter bet amount in Token" min="1" />
+    <button id="approveBtn">Approve Tokens</button>
+    <button id="startGameBtn">Start Game</button>
+  </section>
+
+  <section id="gameSection">
+    <h2>Game Board</h2>
+    <div id="board">
+      <!-- 9 cells for Tic Tac Toe -->
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+    <div id="gameStatus"></div>
+<button id="claimRewardsBtn">Claim Rewards/Refund</button>
+  </section>
+
+  <section id="historySection">
+    <h2>Recent Matches</h2>
+    <ul id="matchHistory">
+      <!-- Match history items will be added here -->
+    </ul>
+  </section>
+
+  <!-- Modal for loading/transaction confirmations -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <p id="modalMessage">Processing...</p>
+      <button id="modalCloseBtn">Close</button>
+    </div>
+  </div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
