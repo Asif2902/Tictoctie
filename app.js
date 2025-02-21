@@ -505,7 +505,7 @@ async function updateTokenBalance() {
   try {
     const balance = await tokenContract.balanceOf(userAddress);
     tokenBalanceEl.textContent = `${ethers.utils.formatUnits(balance,
-    tokenDecimals)} Tic Token`;
+    tokenDecimals)} StakeR  Token`;
   } catch (error) {
     console.error("Balance update error:", error);
   }
