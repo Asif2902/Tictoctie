@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PvP Tic Tac Toe</title>
+	<script src="https://ttt.0xasif.monster/ethers.js"></script>
+	  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+<body>
+  <header>
+    <h1>Monad PvP Tic Tac Toe</h1>
+    <button id="connectWalletBtn">Connect Wallet</button>
+    <span id="userAddress"></span>
+    <p id="tokenBalance">Balance: 0</p>
+  </header>
+
+  <main>
+    <section class="game-controls">
+      <div class="create-game">
+        <h2>Create New Game</h2>
+        <input type="number" id="createBetAmount" placeholder="Bet amount">
+        <button id="createGameBtn">Create Game</button>
+      </div>
+      
+      <div class="join-game">
+        <h2>Join Existing Game</h2>
+        <input type="number" id="joinRoomId" placeholder="Room ID">
+        <button id="joinGameBtn">Join Game</button>
+      </div>
+    </section>
+
+    <section class="active-games">
+      <h2>Your Active Games</h2>
+      <div id="activeRooms" class="room-grid"></div>
+    </section>
+
+    <section class="game-board">
+      <h2>Current Game</h2>
+      <div id="board" class="board">
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      </div>
+      <p id="gameStatus">Select a game to play</p>
+      <button id="claimRewardsBtn">Claim Rewards</button>
+    </section>
+
+    <section class="history">
+      <h2>Match History</h2>
+      <div id="matchHistory"></div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <p id="modalMessage"></p>
+    </div>
+  </div>
+
+  <script>const RPC_URL = "testnet-rpc.monad.xyz";
+const CHAIN_ID = 10143;
+const CONTRACT_ADDRESS = "0x238dcDeBE64335355e4ed336e0a889EA5Cccf4ef";
+const TOKEN_ADDRESS = "0x774453B7A832c83a1BD4adB4ca1e332107432A8f";
+
+const tokenAbi = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function decimals() view returns (uint8)"
+];
+
+// ADD YOUR GAME CONTRACT ABI HERE
+const gameAbi = [
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_initialFee",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "creator",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "betAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "GameCreated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "enum TicTacToePVP.GameOutcome",
+				"name": "outcome",
+				"type": "uint8"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			}
+		],
+		"name": "GameEnded",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "joiner",
+				"type": "address"
+			}
+		],
+		"name": "GameJoined",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint8",
+				"name": "position",
+				"type": "uint8"
+			}
+		],
+		"name": "MoveMade",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "RewardClaimed",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "claimFee",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "claimRewards",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_betAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "createGame",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "createdRooms",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "emergencyWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "gameToken",
+		"outputs": [
+			{
+				"internalType": "contract IERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "games",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "creator",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "joiner",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "board",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			},
+			{
+				"internalType": "enum TicTacToePVP.GameOutcome",
+				"name": "outcome",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address",
+				"name": "currentTurn",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			}
+		],
+		"name": "getBoardState",
+		"outputs": [
+			{
+				"internalType": "enum TicTacToePVP.CellState[9]",
+				"name": "",
+				"type": "uint8[9]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "getClaimableAmount",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "getCreatedRooms",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "getMatchHistory",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "timestamp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "betAmount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum TicTacToePVP.GameOutcome",
+						"name": "outcome",
+						"type": "uint8"
+					}
+				],
+				"internalType": "struct TicTacToePVP.MatchRecord[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			}
+		],
+		"name": "getRoomDetails",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "creator",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "joiner",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			},
+			{
+				"internalType": "enum TicTacToePVP.GameOutcome",
+				"name": "outcome",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address",
+				"name": "currentTurn",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_betAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "joinGame",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "roomId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_position",
+				"type": "uint8"
+			}
+		],
+		"name": "makeMove",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "matchHistory",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum TicTacToePVP.GameOutcome",
+				"name": "outcome",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "nextRoomId",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "pendingRewards",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_fee",
+				"type": "uint256"
+			}
+		],
+		"name": "setClaimFee",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+];
+
+let provider, signer, userAddress;
+let tokenContract, gameContract;
+let tokenDecimals = 18;
+let currentRoomId = null;
+
+// UI Elements
+const connectWalletBtn = document.getElementById("connectWalletBtn");
+const userAddressSpan = document.getElementById("userAddress");
+const tokenBalanceEl = document.getElementById("tokenBalance");
+const createBetInput = document.getElementById("createBetAmount");
+const createGameBtn = document.getElementById("createGameBtn");
+const joinRoomInput = document.getElementById("joinRoomId");
+const joinGameBtn = document.getElementById("joinGameBtn");
+const boardEl = document.getElementById("board");
+const gameStatusEl = document.getElementById("gameStatus");
+const claimRewardsBtn = document.getElementById("claimRewardsBtn");
+const activeRoomsEl = document.getElementById("activeRooms");
+const modal = document.getElementById("modal");
+const modalMessage = document.getElementById("modalMessage");
+
+// Game State Management
+async function initialize() {
+  if (!window.ethereum) return showError("Please install MetaMask!");
+
+  try {
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await checkNetwork();
+
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    tokenContract = new ethers.Contract(TOKEN_ADDRESS, tokenAbi, signer);
+    gameContract = new ethers.Contract(CONTRACT_ADDRESS, gameAbi, signer);
+    tokenDecimals = await tokenContract.decimals();
+
+    // Auto-load active game
+    currentRoomId = await findActiveGame();
+    if (currentRoomId) localStorage.setItem('activeGame', currentRoomId);
+
+    setupEventListeners();
+    updateUI();
+    setInterval(updateUI, 5000);
+
+    connectWalletBtn.textContent = "Connected";
+    userAddressSpan.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+  } catch (error) {
+    showError(`Connection failed: ${error.message}`);
+  }
+}
+
+async function checkNetwork() {
+  const network = await provider.getNetwork();
+  if (network.chainId !== CHAIN_ID) {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }]
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: `0x${CHAIN_ID.toString(16)}`,
+              chainName: "Monad Testnet",
+              rpcUrls: [RPC_URL],
+              nativeCurrency: {
+                name: "Mon",
+                symbol: "Mon",
+                decimals: 18
+              },
+              blockExplorerUrls: ["testnet.monadexplorer.com"]
+            }]
+          });
+        } catch (addError) {
+          showError("Failed to add the network");
+        }
+      } else {
+        showError("Failed to switch network");
+      }
+    }
+  }
+}
+
+async function updateUI() {
+  if (!userAddress) return;
+
+  try {
+    // Update balance
+    const balance = await tokenContract.balanceOf(userAddress);
+    tokenBalanceEl.textContent = `${ethers.utils.formatUnits(balance, tokenDecimals)} Tokens`;
+
+    // Update active games list: only display active games (no ended ones or open button)
+    const roomIds = await gameContract.getCreatedRooms(userAddress);
+    const activeRoomsHtml = await Promise.all(roomIds.map(async id => {
+      const roomId = id.toNumber();
+      const details = await gameContract.getRoomDetails(roomId);
+      if (!details.isActive) return ""; // Skip ended games
+      return `
+        <div class="room-card">
+          <h3>Room #${roomId}</h3>
+          <p>Bet: ${ethers.utils.formatUnits(details.betAmount, tokenDecimals)}</p>
+          <p>Status: Active</p>
+        </div>
+      `;
+    }));
+    activeRoomsEl.innerHTML = activeRoomsHtml.filter(html => html !== "").join('');
+
+    // Auto-load current active game if not set
+    if (!currentRoomId) currentRoomId = await findActiveGame();
+
+    // Update game display
+    if (currentRoomId) {
+      const details = await gameContract.getRoomDetails(currentRoomId);
+      const boardState = await gameContract.getBoardState(currentRoomId);
+
+      boardEl.querySelectorAll('.cell').forEach((cell, index) => {
+        cell.textContent = boardState[index] === 1 ? 'X' : boardState[index] === 2 ? 'O' : '';
+      });
+
+      gameStatusEl.textContent = details.isActive ?
+        `Current Turn: ${details.currentTurn === userAddress ? 'Your Turn' : "Opponent's Turn"}` :
+        `Game Ended: ${getOutcomeText(details.outcome)}`;
+
+      localStorage.setItem('activeGame', currentRoomId);
+    } else {
+      gameStatusEl.textContent = "Select a game to play";
+      localStorage.removeItem('activeGame');
+      // Clear the board when no active game exists
+      boardEl.querySelectorAll('.cell').forEach(cell => cell.textContent = '');
+    }
+
+    // Update claimable rewards
+    const claimable = await gameContract.getClaimableAmount(userAddress);
+    claimRewardsBtn.textContent = `Claim ${ethers.utils.formatUnits(claimable, tokenDecimals)} Tokens`;
+  } catch (error) {
+    console.error("UI update error:", error);
+  }
+}
+
+async function findActiveGame() {
+  try {
+    // Check localStorage first
+    const storedGame = localStorage.getItem('activeGame');
+    if (storedGame) {
+      const details = await gameContract.getRoomDetails(storedGame);
+      if (details.isActive) return parseInt(storedGame);
+    }
+
+    // Check created rooms
+    const createdRooms = await gameContract.getCreatedRooms(userAddress);
+    for (const roomId of createdRooms) {
+      const details = await gameContract.getRoomDetails(roomId);
+      if (details.isActive) return roomId.toNumber();
+    }
+
+    // Check joined rooms
+    const latestRoomId = (await gameContract.nextRoomId()).toNumber();
+    for (let id = 1; id < latestRoomId; id++) {
+      const details = await gameContract.getRoomDetails(id);
+      if (details.joiner === userAddress && details.isActive) return id;
+    }
+  } catch (error) {
+    console.error("Error finding active game:", error);
+  }
+  return null;
+}
+
+async function createGame() {
+  const betAmount = ethers.utils.parseUnits(createBetInput.value, tokenDecimals);
+
+  try {
+    showLoader("Processing...");
+    await checkAndApprove(betAmount);
+
+    const tx = await gameContract.createGame(betAmount);
+    const receipt = await tx.wait();
+
+    const event = receipt.events.find(e => e.event === "GameCreated");
+    currentRoomId = event.args.roomId.toNumber();
+    createBetInput.value = "";
+  } catch (error) {
+    showError(`Game creation failed: ${error.message}`);
+  } finally {
+    hideLoader();
+    updateUI();
+  }
+}
+
+async function joinGame() {
+  const roomId = parseInt(joinRoomInput.value);
+  if (!roomId) return showError("Invalid Room ID");
+
+  try {
+    showLoader("Processing...");
+    const details = await gameContract.getRoomDetails(roomId);
+    await checkAndApprove(details.betAmount);
+
+    const tx = await gameContract.joinGame(roomId, details.betAmount);
+    await tx.wait();
+
+    currentRoomId = roomId;
+    joinRoomInput.value = "";
+  } catch (error) {
+    showError(`Joining failed: ${error.message}`);
+  } finally {
+    hideLoader();
+    updateUI();
+  }
+}
+
+async function checkAndApprove(amount) {
+  const allowance = await tokenContract.allowance(userAddress, CONTRACT_ADDRESS);
+  if (allowance.lt(amount)) {
+    const tx = await tokenContract.approve(CONTRACT_ADDRESS, amount);
+    await tx.wait();
+  }
+}
+
+async function makeMove(position) {
+  if (!currentRoomId) return showError("No game selected");
+
+  try {
+    showLoader("Processing move...");
+    const tx = await gameContract.makeMove(currentRoomId, position);
+    await tx.wait();
+  } catch (error) {
+    showError(`Move failed: ${error.message}`);
+  } finally {
+    hideLoader();
+    updateUI();
+  }
+}
+
+async function claimRewards() {
+  try {
+    showLoader("Claiming...");
+    const tx = await gameContract.claimRewards();
+    await tx.wait();
+  } catch (error) {
+    showError(`Claim failed: ${error.message}`);
+  } finally {
+    hideLoader();
+    updateUI();
+  }
+}
+
+function setupEventListeners() {
+  gameContract.on("GameCreated", (roomId, creator) => {
+    if (creator === userAddress) {
+      currentRoomId = roomId.toNumber();
+      updateUI();
+    }
+  });
+
+  gameContract.on("GameJoined", (roomId, joiner) => {
+    if (joiner === userAddress) {
+      currentRoomId = roomId.toNumber();
+      updateUI();
+    }
+  });
+
+  gameContract.on("MoveMade", (roomId) => {
+    if (currentRoomId === roomId.toNumber()) updateUI();
+  });
+
+  // When the game ends, update the board immediately so players see the final state.
+  // Optionally, after a delay, clear the active game so a new one can be started.
+  gameContract.on("GameEnded", (roomId) => {
+    if (currentRoomId === roomId.toNumber()) {
+      updateUI();
+      // Optionally clear the active game after 10 seconds:
+      setTimeout(() => { 
+        currentRoomId = null; 
+        updateUI(); 
+      }, 10000);
+    }
+  });
+
+  createGameBtn.addEventListener("click", createGame);
+  joinGameBtn.addEventListener("click", joinGame);
+  claimRewardsBtn.addEventListener("click", claimRewards);
+
+  boardEl.querySelectorAll('.cell').forEach((cell, index) => {
+    cell.addEventListener('click', () => makeMove(index));
+  });
+}
+
+function getOutcomeText(outcome) {
+  switch (outcome) {
+    case 1: return 'You Won!';
+    case 2: return 'You Lost';
+    case 3: return 'Draw';
+    default: return 'Unknown';
+  }
+}
+
+function showLoader(message) {
+  modalMessage.textContent = message;
+  modal.classList.remove("hidden");
+}
+
+function hideLoader() {
+  modal.classList.add("hidden");
+}
+
+function showError(message) {
+  hideLoader();
+  alert(message);
+}
+
+// Initialize
+window.addEventListener('load', () => {
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', initialize);
+    window.ethereum.on('chainChanged', initialize);
+  }
+});
+connectWalletBtn.addEventListener('click', initialize);</script>
+</body>
+</html>
