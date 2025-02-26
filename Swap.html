@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
 rel="stylesheet">
   <style>
-    /* ---------- Global & Dark Theme Styles ---------- */
     :root {
       --primary-bg: #0d1117;
       --secondary-bg: #161b22;
@@ -303,6 +302,26 @@ rel="stylesheet">
         font-size: 1rem;
       }
     }
+    .lp-max-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-icon {
+  font-size: 0.8rem;         /* small enough to not be obtrusive */
+  margin-left: 4px;
+  cursor: pointer;
+  color: #888;
+  border: 1px solid #888;
+  border-radius: 50%;
+  padding: 0 4px;
+  line-height: 1.2;
+}
+
+.info-icon:hover {
+  color: #555;
+  border-color: #555;
+}
 </style>
 </head>
 <body>
@@ -399,6 +418,7 @@ rel="stylesheet">
       <div class="field-row">
         <input type="number" id="liqLPAmount" placeholder="LP Token Amount" oninput="updateBalanceDisplay('lp')" />
         <button class="max-btn" onclick="setMax('lp')">MAX</button>
+         <span class="info-icon" id="lpInfoIcon">i</span>
       </div>
       <div class="field-row">
         <span id="balanceLP" class="balance-display"></span>
@@ -2026,6 +2046,9 @@ rel="stylesheet">
       }
       document.getElementById("priceDisplay").innerText = priceMsg;
     }
+    document.getElementById("lpInfoIcon").addEventListener("click", function() {
+  alert("Due to a permanently locked minimum liquidity and rounding errors in the calculation, you cannot remove 100% of your LP tokens. The maximum removable percentage is 99.999999%.");
+});
   </script>
 </body>
 </html>
