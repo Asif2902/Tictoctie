@@ -2123,27 +2123,6 @@ async function addLiquidity() {
     document.getElementById("lpInfoIcon").addEventListener("click", function() {
   alert("Due to a permanently locked minimum liquidity and rounding errors in the calculation, you cannot remove 100% of your LP tokens. The maximum removable percentage is 99.999999%.");
 });
-
-/** HELPER FUNCTIONS**/
-
-function startPeriodicDataFetch() {
-  setInterval(() => {
-    // Only run if the wallet is connected.
-    if (userAddress) {
-      estimateSwap();
-      updateAllBalanceDisplays();
-      updatePriceDisplay();
-    }
-  }, 3000); // 3000 ms = 3 seconds
-}
-
-window.addEventListener('load', async () => {
-  await initProvider();
-  updateTokenDisplay();
-  populateTokenModal();
-  updateAllBalanceDisplays();
-  startPeriodicDataFetch(); // Start periodic updates every 3 seconds
-});
   </script>
 </body>
 </html>
