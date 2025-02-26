@@ -1892,65 +1892,130 @@ rel="stylesheet">
     }
 
     /***************** LIQUIDITY FUNCTIONS ******************/
-    async function addLiquidity() {
-      document.getElementById("liqStatus").innerText = "Adding liquidity...";
-      try {
-        let tokenA = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
-        let tokenB = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
-        const amountA = document.getElementById("liqAmountA").value;
-        const amountB = document.getElementById("liqAmountB").value;
-        if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0)
-          throw new Error("Enter valid amounts.");
-        const deadline = Math.floor(Date.now() / 1000) + 600;
-        let tx;
-        // For liquidity involving native Mon, use addLiquidityETH.
-        if ((tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) || (tokenA === WRAPPED_TOKEN && tokenB === NATIVE_TOKEN) ||
-            (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN)) {
-          const token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
-          const monAmount = tokenA === NATIVE_TOKEN ? amountA : amountB;
-          const tokenAmount = tokenA === NATIVE_TOKEN ? amountB : amountA;
-          const tokenContract = new ethers.Contract(token, erc20Abi, signer);
-          const dec = await tokenContract.decimals();
-          const amtToken = ethers.utils.parseUnits(tokenAmount, dec);
-          await tokenContract.approve(ROUTER_ADDRESS, amtToken);
-          tx = await routerContract.addLiquidityETH(
-            token,
-            amtToken,
-            0,
-            0,
-            deadline,
-            { value: ethers.utils.parseEther(monAmount) }
-          );
-        } else {
-          // Token-to-token liquidity
-          const tokenContractA = new ethers.Contract(tokenA, erc20Abi, signer);
-          const tokenContractB = new ethers.Contract(tokenB, erc20Abi, signer);
-          const decA = await tokenContractA.decimals();
-          const decB = await tokenContractB.decimals();
-          const amtA = ethers.utils.parseUnits(amountA, decA);
-          const amtB = ethers.utils.parseUnits(amountB, decB);
-          await tokenContractA.approve(ROUTER_ADDRESS, amtA);
-          await tokenContractB.approve(ROUTER_ADDRESS, amtB);
-          tx = await routerContract.addLiquidity(
-            tokenA,
-            tokenB,
-            amtA,
-            amtB,
-            0,
-            0,
-            deadline
-          );
-        }
-        document.getElementById("liqStatus").innerText = "Liquidity transaction submitted...";
-        await tx.wait();
-        document.getElementById("liqStatus").innerText = "Liquidity added successfully!";
-        updateAllBalanceDisplays();
-      } catch (error) {
-        console.error(error);
-        document.getElementById("liqStatus").innerText = "Error: " + error.message;
-      }
+async function addLiquidity() {
+  document.getElementById("liqStatus").innerText = "Adding liquidity...";
+  try {
+    let tokenA = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+    let tokenB = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+    let amountA = document.getElementById("liqAmountA").value.trim();
+    let amountB = document.getElementById("liqAmountB").value.trim();
+
+    // Determine if native is involved and get the pair address accordingly.
+    const isNativeInvolved = (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN);
+    let pairAddress;
+    if (isNativeInvolved) {
+      // When native is involved, use WRAPPED_TOKEN as its replacement.
+      let token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
+      pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, token);
+    } else {
+      pairAddress = await factoryContract.getPair(tokenA, tokenB);
     }
 
+    // If the pair exists, fetch the reserves and auto-calculate the missing amount.
+    if (pairAddress !== ethers.constants.AddressZero) {
+      let reserves;
+      // For native cases, use WRAPPED_TOKEN with the other token.
+      if (isNativeInvolved) {
+        let token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
+        reserves = await getPairReserves(WRAPPED_TOKEN, token);
+        // If user provided native amount (amountA if tokenA is native) but left the other empty…
+        if (tokenA === NATIVE_TOKEN && amountA && !amountB) {
+          let amtA = ethers.utils.parseEther(amountA);
+          let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
+          const tokenContract = new ethers.Contract(tokenB, erc20Abi, provider);
+          const dec = await tokenContract.decimals();
+          amountB = ethers.utils.formatUnits(optimalB, dec);
+          document.getElementById("liqAmountB").value = amountB;
+        } else if (tokenB === NATIVE_TOKEN && amountB && !amountA) {
+          let amtB = ethers.utils.parseEther(amountB);
+          let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
+          // Since native is represented as Mon (18 decimals)
+          amountA = ethers.utils.formatEther(optimalA);
+          document.getElementById("liqAmountA").value = amountA;
+        }
+      } else {
+        // Token-to-token pair exists.
+        reserves = await getPairReserves(tokenA, tokenB);
+        // If only amountA is entered, calculate amountB.
+        if (amountA && !amountB) {
+          const tokenContractA = new ethers.Contract(tokenA, erc20Abi, provider);
+          const tokenContractB = new ethers.Contract(tokenB, erc20Abi, provider);
+          const decA = await tokenContractA.decimals();
+          const decB = await tokenContractB.decimals();
+          let amtA = ethers.utils.parseUnits(amountA, decA);
+          let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
+          amountB = ethers.utils.formatUnits(optimalB, decB);
+          document.getElementById("liqAmountB").value = amountB;
+        } else if (amountB && !amountA) {
+          const tokenContractA = new ethers.Contract(tokenA, erc20Abi, provider);
+          const tokenContractB = new ethers.Contract(tokenB, erc20Abi, provider);
+          const decA = await tokenContractA.decimals();
+          const decB = await tokenContractB.decimals();
+          let amtB = ethers.utils.parseUnits(amountB, decB);
+          let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
+          amountA = ethers.utils.formatUnits(optimalA, decA);
+          document.getElementById("liqAmountA").value = amountA;
+        }
+      }
+    }
+    
+    // Check that both amounts are now provided and valid.
+    if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
+      throw new Error("Enter valid amounts for both tokens.");
+    }
+    
+    const deadline = Math.floor(Date.now() / 1000) + 600;
+    let tx;
+
+    // For liquidity involving native Mon, use addLiquidityETH.
+    if ((tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) ||
+        (tokenA === WRAPPED_TOKEN && tokenB === NATIVE_TOKEN) ||
+        (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN)) {
+      const token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
+      const monAmount = tokenA === NATIVE_TOKEN ? amountA : amountB;
+      const tokenAmount = tokenA === NATIVE_TOKEN ? amountB : amountA;
+      const tokenContract = new ethers.Contract(token, erc20Abi, signer);
+      const dec = await tokenContract.decimals();
+      const amtToken = ethers.utils.parseUnits(tokenAmount, dec);
+      await tokenContract.approve(ROUTER_ADDRESS, amtToken);
+      tx = await routerContract.addLiquidityETH(
+        token,
+        amtToken,
+        0,
+        0,
+        deadline,
+        { value: ethers.utils.parseEther(monAmount) }
+      );
+    } else {
+      // Token-to-token liquidity
+      const tokenContractA = new ethers.Contract(tokenA, erc20Abi, signer);
+      const tokenContractB = new ethers.Contract(tokenB, erc20Abi, signer);
+      const decA = await tokenContractA.decimals();
+      const decB = await tokenContractB.decimals();
+      const amtA = ethers.utils.parseUnits(amountA, decA);
+      const amtB = ethers.utils.parseUnits(amountB, decB);
+      await tokenContractA.approve(ROUTER_ADDRESS, amtA);
+      await tokenContractB.approve(ROUTER_ADDRESS, amtB);
+      tx = await routerContract.addLiquidity(
+        tokenA,
+        tokenB,
+        amtA,
+        amtB,
+        0,
+        0,
+        deadline
+      );
+    }
+    
+    document.getElementById("liqStatus").innerText = "Liquidity transaction submitted...";
+    await tx.wait();
+    document.getElementById("liqStatus").innerText = "Liquidity added successfully!";
+    updateAllBalanceDisplays();
+  } catch (error) {
+    console.error(error);
+    document.getElementById("liqStatus").innerText = "Error: " + error.message;
+  }
+}
     async function removeLiquidity() {
       document.getElementById("removeLiqStatus").innerText = "Approving LP tokens...";
       try {
@@ -2057,6 +2122,27 @@ rel="stylesheet">
 }
     document.getElementById("lpInfoIcon").addEventListener("click", function() {
   alert("Due to a permanently locked minimum liquidity and rounding errors in the calculation, you cannot remove 100% of your LP tokens. The maximum removable percentage is 99.999999%.");
+});
+
+/** HELPER FUNCTIONS**/
+
+function startPeriodicDataFetch() {
+  setInterval(() => {
+    // Only run if the wallet is connected.
+    if (userAddress) {
+      estimateSwap();
+      updateAllBalanceDisplays();
+      updatePriceDisplay();
+    }
+  }, 3000); // 3000 ms = 3 seconds
+}
+
+window.addEventListener('load', async () => {
+  await initProvider();
+  updateTokenDisplay();
+  populateTokenModal();
+  updateAllBalanceDisplays();
+  startPeriodicDataFetch(); // Start periodic updates every 3 seconds
 });
   </script>
 </body>
