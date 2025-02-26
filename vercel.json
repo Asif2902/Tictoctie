@@ -4,6 +4,10 @@
     {
       "src": "/pvp",
       "dest": "/pvp.html"
+    },
+            {
+      "src": "/swap",
+      "dest": "/Swap.html"
     }
     ]
 }
