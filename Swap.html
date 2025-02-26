@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My DEX UI</title>
+  <script src="https://ttt.0xasif.monster/ethers.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+rel="stylesheet">
+  <style>
+    /* ---------- Global & Dark Theme Styles ---------- */
+    :root {
+      --primary-bg: #0d1117;
+      --secondary-bg: #161b22;
+      --accent: #1f6feb;
+      --accent-hover: #2b81ff;
+      --text-primary: #e6edf3;
+      --text-secondary: #7d8590;
+      --border: #30363d;
+      --positive: #238636;
+      --negative: #da3633;
+    }
+
+    body {
+      background-color: var(--primary-bg);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+    }
+
+    nav {
+      background-color: var(--secondary-bg);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .nav-links button {
+      background-color: var(--accent);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      color: var(--text-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .nav-links button:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      gap: 8px;
+    }
+
+    .tablink {
+      flex: 1;
+      padding: 1rem;
+      background-color: var(--secondary-bg);
+      color: var(--text-secondary);
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      font-size: 1rem;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .tablink.active {
+      background-color: var(--accent);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .tabcontent {
+      background-color: var(--secondary-bg);
+      padding: 1.5rem;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+
+    h2, h3 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background-color: var(--primary-bg);
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.1);
+    }
+
+    button {
+      background-color: var(--accent);
+      border: none;
+      padding: 1rem;
+      color: var(--text-primary);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      width: 100%;
+      margin-bottom: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 8px;
+    }
+
+    .token-select {
+      display: flex;
+      align-items: center;
+      background-color: var(--primary-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      min-width: 120px;
+      transition: all 0.2s ease;
+    }
+
+    .token-select:hover {
+      background-color: var(--secondary-bg);
+    }
+
+    .token-select img {
+      width: 28px;
+      height: 28px;
+      margin-right: 0.75rem;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .token-select span {
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    /* ---------- Modal Styles ---------- */
+    #tokenModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(13, 17, 23, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    #tokenModal .modal-content {
+      background: var(--primary-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 420px;
+      max-height: 70vh;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    #tokenModal .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #tokenModal .modal-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    #tokenModal .modal-body {
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    #tokenModal .token-item {
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    #tokenModal .token-item:hover {
+      background-color: var(--secondary-bg);
+    }
+
+    #tokenModal input[type="text"] {
+      width: calc(100% - 3rem);
+      margin: 1rem 1.5rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+    }
+
+    /* ---------- Status Messages ---------- */
+    .status-msg {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    .status-msg.success {
+      background-color: rgba(35, 134, 54, 0.15);
+      color: var(--positive);
+    }
+
+    .status-msg.error {
+      background-color: rgba(218, 54, 51, 0.15);
+      color: var(--negative);
+    }
+
+    #priceImpact {
+      font-size: 0.9rem;
+      text-align: center;
+      margin: 1rem 0;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background-color: rgba(247, 129, 102, 0.1);
+      color: #f78166;
+    }
+
+    /* ---------- Responsive Design ---------- */
+    @media (max-width: 480px) {
+      .container {
+        margin: 1rem auto;
+      }
+      
+      nav {
+        padding: 1rem;
+      }
+      
+      .tabcontent {
+        padding: 1rem;
+      }
+      
+      .token-select span {
+        font-size: 0.9rem;
+      }
+      
+      input {
+        font-size: 1rem;
+      }
+    }
+</style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav>
+    <div class="logo">MyDEX</div>
+    <div class="nav-links">
+      <button id="connectWalletBtn">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container">
+    <!-- Tabs: Swap and Liquidity -->
+    <div class="tabs">
+      <button class="tablink active" onclick="openTab(event, 'swapTab')">Swap</button>
+      <button class="tablink" onclick="openTab(event, 'liqTab')">Liquidity</button>
+    </div>
+
+    <!-- Swap Tab -->
+    <div id="swapTab" class="tabcontent" style="display:block;">
+      <h2>Swap</h2>
+      <div class="field-row">
+        <!-- From Field -->
+        <div id="fromTokenBtn" class="token-select" onclick="openTokenModal('swapFrom')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Mon">
+          <span>Mon</span>
+        </div>
+        <input type="number" id="swapFromAmount" placeholder="From Amount" oninput="estimateSwap(); updateBalanceDisplay('swapFrom')" />
+        <button class="max-btn" onclick="setMax('swapFrom')">MAX</button>
+      </div>
+      <div class="field-row">
+        <span id="balanceSwapFrom" class="balance-display"></span>
+      </div>
+      <!-- Switch Button -->
+      <button class="switch-btn" onclick="switchTokens()">&#8645;</button>
+      <div class="field-row">
+        <!-- To Field -->
+        <div id="toTokenBtn" class="token-select" onclick="openTokenModal('swapTo')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Wmon">
+          <span>Wmon</span>
+        </div>
+        <input type="number" id="swapToAmount" placeholder="Estimated To Amount" disabled />
+      </div>
+      <div class="field-row">
+        <span id="balanceSwapTo" class="balance-display"></span>
+      </div>
+      <div id="priceImpact"></div>
+      <button class="primary" id="swapBtn" onclick="performSwap()">Swap</button>
+      <div id="swapStatus" class="status-msg"></div>
+      <div id="priceDisplay" class="status-msg"></div>
+    </div>
+
+    <!-- Liquidity Tab -->
+    <div id="liqTab" class="tabcontent" style="display:none;">
+      <h2>Liquidity</h2>
+      <h3>Add Liquidity</h3>
+      <div class="field-row">
+        <div id="liqTokenABtn" class="token-select" onclick="openTokenModal('liqTokenA')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Mon">
+          <span>Mon</span>
+        </div>
+        <input type="number" id="liqAmountA" placeholder="Amount A" oninput="updateBalanceDisplay('liqA')" />
+        <button class="max-btn" onclick="setMax('liqA')">MAX</button>
+      </div>
+      <div class="field-row">
+        <span id="balanceLiqA" class="balance-display"></span>
+      </div>
+      <div class="field-row">
+        <div id="liqTokenBBtn" class="token-select" onclick="openTokenModal('liqTokenB')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Wmon">
+          <span>Wmon</span>
+        </div>
+        <input type="number" id="liqAmountB" placeholder="Amount B" oninput="updateBalanceDisplay('liqB')" />
+        <button class="max-btn" onclick="setMax('liqB')">MAX</button>
+      </div>
+      <div class="field-row">
+        <span id="balanceLiqB" class="balance-display"></span>
+      </div>
+      <button class="primary" onclick="addLiquidity()">Add Liquidity</button>
+      <div id="liqStatus" class="status-msg"></div>
+      <hr />
+      <h3>Remove Liquidity</h3>
+      <div class="field-row">
+        <div id="removeTokenABtn" class="token-select" onclick="openTokenModal('removeTokenA')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Mon">
+          <span>Mon</span>
+        </div>
+        <div id="removeTokenBBtn" class="token-select" onclick="openTokenModal('removeTokenB')">
+          <img src="https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" alt="Wmon">
+          <span>Wmon</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <input type="number" id="liqLPAmount" placeholder="LP Token Amount" oninput="updateBalanceDisplay('lp')" />
+        <button class="max-btn" onclick="setMax('lp')">MAX</button>
+      </div>
+      <div class="field-row">
+        <span id="balanceLP" class="balance-display"></span>
+      </div>
+      <button class="primary" onclick="removeLiquidity()">Remove Liquidity</button>
+      <div id="removeLiqStatus" class="status-msg"></div>
+    </div>
+  </div>
+
+  <!-- Token Selection Modal -->
+  <div id="tokenModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Select a Token</h3>
+        <button onclick="closeTokenModal()">X</button>
+      </div>
+      <input type="text" id="tokenSearch" placeholder="Search by symbol..." oninput="filterTokenList()" />
+      <div class="modal-body" id="tokenList"></div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+    <script>
+    /***************** CONFIGURATION & GLOBAL VARIABLES ******************/
+    const FACTORY_ADDRESS = "0x814BD6D2fB4DA5EaeAB218683Bd9B1c173D1C2de";
+    const ROUTER_ADDRESS  = "0xEFEA0ec1e76f62be41D3CFD41c54ca74fc51fe41";
+    const WETH_ADDRESS    = "0xf6C4e67A551bd10444e3b439A4Eb19ec46eC1215";
+    const NATIVE_TOKEN    = "Mon";  // native coin (Mon)
+    const WRAPPED_TOKEN   = WETH_ADDRESS; // Wrapped token (Wmon)
+    const ETH_PRICE_USD   = 5; // Hard-coded price for Mon
+    const routerAbi = [
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenA",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "tokenB",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountADesired",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountBDesired",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountAMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountBMin",
+				"type": "uint256"
+			}
+		],
+		"name": "addLiquidity",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountA",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountB",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "liquidity",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountTokenDesired",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountTokenMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountETHMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "deadline",
+				"type": "uint256"
+			}
+		],
+		"name": "addLiquidityETH",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountToken",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountETH",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "liquidity",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenA",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "tokenB",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "liquidity",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountAMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountBMin",
+				"type": "uint256"
+			}
+		],
+		"name": "removeLiquidity",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountA",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountB",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "liquidity",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountTokenMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountETHMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "deadline",
+				"type": "uint256"
+			}
+		],
+		"name": "removeLiquidityETH",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountToken",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountETH",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountOutMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "path",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256",
+				"name": "deadline",
+				"type": "uint256"
+			}
+		],
+		"name": "swapExactETHForTokens",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountOutMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "path",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256",
+				"name": "deadline",
+				"type": "uint256"
+			}
+		],
+		"name": "swapExactTokensForETH",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amountOutMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "path",
+				"type": "address[]"
+			}
+		],
+		"name": "swapExactTokensForTokens",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_factory",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_WETH",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"stateMutability": "payable",
+		"type": "receive"
+	},
+	{
+		"inputs": [],
+		"name": "factory",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "FEE",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountOut",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveOut",
+				"type": "uint256"
+			}
+		],
+		"name": "getAmountIn",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveOut",
+				"type": "uint256"
+			}
+		],
+		"name": "getAmountOut",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountOut",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountOut",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "path",
+				"type": "address[]"
+			}
+		],
+		"name": "getAmountsIn",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address[]",
+				"name": "path",
+				"type": "address[]"
+			}
+		],
+		"name": "getAmountsOut",
+		"outputs": [
+			{
+				"internalType": "uint256[]",
+				"name": "amounts",
+				"type": "uint256[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenA",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "tokenB",
+				"type": "address"
+			}
+		],
+		"name": "getReserves",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "reserveA",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveB",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountA",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveA",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "reserveB",
+				"type": "uint256"
+			}
+		],
+		"name": "quote",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "amountB",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "pure",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "WETH",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+    const erc20Abi = [
+      "function balanceOf(address owner) view returns (uint)",
+      "function decimals() view returns (uint8)",
+      "function symbol() view returns (string)",
+      "function approve(address spender, uint amount) returns (bool)"
+    ];
+    // Minimal WETH ABI for deposit/withdraw (Wmon)
+    const wethAbi = [
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "name",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "guy",
+				"type": "address"
+			},
+			{
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "totalSupply",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "src",
+				"type": "address"
+			},
+			{
+				"name": "dst",
+				"type": "address"
+			},
+			{
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "withdraw",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "decimals",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "symbol",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "dst",
+				"type": "address"
+			},
+			{
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "transfer",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "deposit",
+		"outputs": [],
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			},
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "allowance",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "fallback"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "src",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"name": "guy",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "Approval",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "src",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"name": "dst",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "Transfer",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "dst",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "Deposit",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "src",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "wad",
+				"type": "uint256"
+			}
+		],
+		"name": "Withdrawal",
+		"type": "event"
+	}
+];
+    // Minimal Factory ABI to get pair address.
+    const factoryAbi = [
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_feeToSetter",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "token0",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "token1",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "pair",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "PairCreated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "allPairs",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "allPairsLength",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenA",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "tokenB",
+				"type": "address"
+			}
+		],
+		"name": "createPair",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "pair",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feeTo",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "feeToSetter",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "getPair",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_feeTo",
+				"type": "address"
+			}
+		],
+		"name": "setFeeTo",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_feeToSetter",
+				"type": "address"
+			}
+		],
+		"name": "setFeeToSetter",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+];
+    // Minimal pair ABI for reserve lookup and token ordering.
+    const pairAbi = [
+      "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+      "function token0() view returns (address)",
+      "function token1() view returns (address)"
+    ];
+
+    // Default tokens: native Mon and wrapped Wmon
+    let defaultTokens = [
+      { address: NATIVE_TOKEN, symbol: "Mon", logo: "https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" },
+      { address: WRAPPED_TOKEN, symbol: "Wmon", logo: "https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" }
+    ];
+    let importedTokens = JSON.parse(localStorage.getItem("importedTokens") || "[]");
+    let tokenList = [...defaultTokens, ...importedTokens];
+
+    // Global provider, signer, contracts, user address.
+    let provider, signer, routerContract, factoryContract, userAddress;
+    let currentTokenField = ""; // e.g., "swapFrom", "swapTo", etc.
+
+    /***************** UTILITY FUNCTIONS ******************/
+    function formatNumber(num) {
+      let n = parseFloat(num);
+      if (isNaN(n)) return "0";
+      if(n < 0.001) return n.toFixed(3);
+      if(n < 1000) return n.toFixed(3);
+      if(n < 1e6) return (n/1e3).toFixed(3) + "k";
+      if(n < 1e9) return (n/1e6).toFixed(3) + "M";
+      if(n < 1e12) return (n/1e9).toFixed(3) + "B";
+      return (n/1e12).toFixed(3) + "T";
+    }
+
+    async function getTokenBalance(token) {
+      if (token === NATIVE_TOKEN) {
+        const bal = await provider.getBalance(userAddress);
+        return ethers.utils.formatEther(bal);
+      } else {
+        const contract = new ethers.Contract(token, erc20Abi, provider);
+        const bal = await contract.balanceOf(userAddress);
+        const dec = await contract.decimals();
+        return ethers.utils.formatUnits(bal, dec);
+      }
+    }
+
+    async function getLPBalance(pairAddress) {
+      if(!pairAddress) return "0";
+      const contract = new ethers.Contract(pairAddress, erc20Abi, provider);
+      const bal = await contract.balanceOf(userAddress);
+      return ethers.utils.formatUnits(bal, 18);
+    }
+
+    // Helper to fetch reserves from a pair contract.
+    async function getPairReserves(tokenA, tokenB) {
+      // Replace native with wrapped token.
+      let addrA = (tokenA === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenA;
+      let addrB = (tokenB === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenB;
+      let pairAddress = await factoryContract.getPair(addrA, addrB);
+      if(pairAddress === ethers.constants.AddressZero) {
+        throw new Error("No liquidity pool found");
+      }
+      const pairContract = new ethers.Contract(pairAddress, pairAbi, provider);
+      const reserves = await pairContract.getReserves();
+      const token0 = await pairContract.token0();
+      const token1 = await pairContract.token1();
+      let reserveA, reserveB;
+      if(addrA.toLowerCase() === token0.toLowerCase()) {
+          reserveA = reserves[0];
+          reserveB = reserves[1];
+      } else {
+          reserveA = reserves[1];
+          reserveB = reserves[0];
+      }
+      return { reserveIn: reserveA, reserveOut: reserveB };
+    }
+
+    /***************** PROVIDER & CONTRACT INIT ******************/
+    async function initProvider() {
+      if(window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        await provider.send("eth_requestAccounts", []);
+      } else {
+        provider = new ethers.providers.JsonRpcProvider("https://testnet-rpc.monad.xyz");
+      }
+      signer = provider.getSigner();
+      try {
+        userAddress = await signer.getAddress();
+        document.getElementById("connectWalletBtn").innerText = userAddress.substring(0,6) + "..." + userAddress.slice(-4);
+      } catch(e) {
+        document.getElementById("connectWalletBtn").innerText = "Connect Wallet";
+      }
+      routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, signer);
+      factoryContract = new ethers.Contract(FACTORY_ADDRESS, factoryAbi, provider);
+    }
+
+    window.addEventListener('load', async () => {
+      await initProvider();
+      updateTokenDisplay();
+      populateTokenModal();
+      updateAllBalanceDisplays();
+    });
+
+    document.getElementById("connectWalletBtn").addEventListener("click", async () => {
+      await initProvider();
+      updateAllBalanceDisplays();
+    });
+
+    /***************** TAB SWITCHING ******************/
+    function openTab(evt, tabName) {
+      const tabcontents = document.getElementsByClassName("tabcontent");
+      for (let tc of tabcontents) tc.style.display = "none";
+      const tablinks = document.getElementsByClassName("tablink");
+      for (let tl of tablinks) tl.classList.remove("active");
+      document.getElementById(tabName).style.display = "block";
+      evt.currentTarget.classList.add("active");
+    }
+
+    /***************** TOKEN MODAL FUNCTIONS ******************/
+    function openTokenModal(field) {
+      currentTokenField = field;
+      document.getElementById("tokenModal").style.display = "flex";
+      document.getElementById("tokenSearch").value = "";
+      populateTokenModal();
+    }
+    function closeTokenModal() {
+      document.getElementById("tokenModal").style.display = "none";
+    }
+    function populateTokenModal() {
+      const listDiv = document.getElementById("tokenList");
+      listDiv.innerHTML = "";
+      tokenList.forEach(token => {
+        const div = document.createElement("div");
+        div.className = "token-item";
+        div.onclick = () => { selectToken(token); };
+        if(token.logo) {
+          div.innerHTML = `<img src="${token.logo}" alt="${token.symbol}"><span>${token.symbol}</span>`;
+        } else {
+          div.innerHTML = `<span style="font-size:1.2rem; margin-right:0.5rem;">?</span><span>${token.symbol}</span>`;
+        }
+        listDiv.appendChild(div);
+      });
+      const query = document.getElementById("tokenSearch").value.trim();
+      if (ethers.utils.isAddress(query) && !tokenList.find(t => t.address.toLowerCase() === query.toLowerCase())) {
+        const importDiv = document.createElement("div");
+        importDiv.className = "token-item";
+        importDiv.style.fontStyle = "italic";
+        importDiv.onclick = () => { importToken(query); };
+        importDiv.innerText = `Import Token`;
+        listDiv.appendChild(importDiv);
+      }
+    }
+    function filterTokenList() {
+      const query = document.getElementById("tokenSearch").value.toLowerCase();
+      const listDiv = document.getElementById("tokenList");
+      listDiv.innerHTML = "";
+      tokenList.filter(token => token.symbol.toLowerCase().includes(query))
+      .forEach(token => {
+        const div = document.createElement("div");
+        div.className = "token-item";
+        div.onclick = () => { selectToken(token); };
+        if(token.logo) {
+          div.innerHTML = `<img src="${token.logo}" alt="${token.symbol}"><span>${token.symbol}</span>`;
+        } else {
+          div.innerHTML = `<span style="font-size:1.2rem; margin-right:0.5rem;">?</span><span>${token.symbol}</span>`;
+        }
+        listDiv.appendChild(div);
+      });
+      if (ethers.utils.isAddress(query) && !tokenList.find(t => t.address.toLowerCase() === query.toLowerCase())) {
+        const importDiv = document.createElement("div");
+        importDiv.className = "token-item";
+        importDiv.style.fontStyle = "italic";
+        importDiv.onclick = () => { importToken(query); };
+        importDiv.innerText = `Import Token`;
+        listDiv.appendChild(importDiv);
+      }
+    }
+    async function importToken(queryAddress) {
+      try {
+        const tokenContract = new ethers.Contract(queryAddress, erc20Abi, provider);
+        const symbol = await tokenContract.symbol();
+        const tokenData = { address: queryAddress, symbol: symbol, logo: null };
+        importedTokens.push(tokenData);
+        localStorage.setItem("importedTokens", JSON.stringify(importedTokens));
+        tokenList = [...defaultTokens, ...importedTokens];
+        populateTokenModal();
+      } catch (e) {
+        const tokenData = { address: queryAddress, symbol: "UNK", logo: null };
+        importedTokens.push(tokenData);
+        localStorage.setItem("importedTokens", JSON.stringify(importedTokens));
+        tokenList = [...defaultTokens, ...importedTokens];
+        populateTokenModal();
+      }
+    }
+    function selectToken(token) {
+      let btn;
+      switch (currentTokenField) {
+        case "swapFrom": btn = document.getElementById("fromTokenBtn"); break;
+        case "swapTo":   btn = document.getElementById("toTokenBtn"); break;
+        case "liqTokenA": btn = document.getElementById("liqTokenABtn"); break;
+        case "liqTokenB": btn = document.getElementById("liqTokenBBtn"); break;
+        case "removeTokenA": btn = document.getElementById("removeTokenABtn"); break;
+        case "removeTokenB": btn = document.getElementById("removeTokenBBtn"); break;
+        default: return;
+      }
+      if(token.logo) {
+        btn.innerHTML = `<img src="${token.logo}" alt="${token.symbol}"><span>${token.symbol}</span>`;
+      } else {
+        btn.innerHTML = `<span style="font-size:1.2rem; margin-right:0.5rem;">?</span><span>${token.symbol}</span>`;
+      }
+      btn.setAttribute("data-token", token.address);
+      closeTokenModal();
+      if (currentTokenField === "swapFrom" || currentTokenField === "swapTo") {
+        estimateSwap();
+        updatePriceDisplay();
+        updateBalanceDisplay("swapFrom");
+        updateBalanceDisplay("swapTo");
+      }
+    }
+
+    /***************** BALANCE DISPLAY FUNCTIONS ******************/
+    async function updateBalanceDisplay(field) {
+      if(!userAddress) return;
+      if(field === "swapFrom") {
+        const token = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+        const bal = await getTokenBalance(token);
+        document.getElementById("balanceSwapFrom").innerText = "Balance: " + formatNumber(bal);
+      } else if(field === "swapTo") {
+        const token = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        const bal = await getTokenBalance(token);
+        document.getElementById("balanceSwapTo").innerText = "Balance: " + formatNumber(bal);
+      } else if(field === "liqA") {
+        const token = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        const bal = await getTokenBalance(token);
+        document.getElementById("balanceLiqA").innerText = "Balance: " + formatNumber(bal);
+      } else if(field === "liqB") {
+        const token = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        const bal = await getTokenBalance(token);
+        document.getElementById("balanceLiqB").innerText = "Balance: " + formatNumber(bal);
+      } else if(field === "lp") {
+        const tokenA = document.getElementById("removeTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        const tokenB = document.getElementById("removeTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        let addrA = (tokenA === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenA;
+        let addrB = (tokenB === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenB;
+        if(addrA.toLowerCase() === addrB.toLowerCase()) {
+          document.getElementById("balanceLP").innerText = "Balance: 0";
+          return;
+        }
+        let pairAddress = await factoryContract.getPair(addrA, addrB);
+        if(pairAddress === ethers.constants.AddressZero) {
+          document.getElementById("balanceLP").innerText = "Balance: 0";
+        } else {
+          const lpBal = await getLPBalance(pairAddress);
+          document.getElementById("balanceLP").innerText = "Balance: " + formatNumber(lpBal);
+        }
+      }
+    }
+    async function updateAllBalanceDisplays() {
+      await updateBalanceDisplay("swapFrom");
+      await updateBalanceDisplay("swapTo");
+      await updateBalanceDisplay("liqA");
+      await updateBalanceDisplay("liqB");
+      await updateBalanceDisplay("lp");
+    }
+
+    /***************** MAX BUTTON FUNCTIONS ******************/
+    async function setMax(field) {
+      if(!userAddress) return;
+      if(field === "swapFrom") {
+        const token = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let bal = await getTokenBalance(token);
+        document.getElementById("swapFromAmount").value = parseFloat(bal).toFixed(3);
+        estimateSwap();
+      } else if(field === "liqA") {
+        const token = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let bal = await getTokenBalance(token);
+        document.getElementById("liqAmountA").value = parseFloat(bal).toFixed(3);
+      } else if(field === "liqB") {
+        const token = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        let bal = await getTokenBalance(token);
+        document.getElementById("liqAmountB").value = parseFloat(bal).toFixed(3);
+      } else if(field === "lp") {
+        const tokenA = document.getElementById("removeTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        const tokenB = document.getElementById("removeTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        let addrA = (tokenA === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenA;
+        let addrB = (tokenB === NATIVE_TOKEN) ? WRAPPED_TOKEN : tokenB;
+        let pairAddress = await factoryContract.getPair(addrA, addrB);
+        if(pairAddress !== ethers.constants.AddressZero) {
+          let bal = await getLPBalance(pairAddress);
+          document.getElementById("liqLPAmount").value = parseFloat(bal).toFixed(3);
+        }
+      }
+    }
+
+    /***************** SWITCH TOKENS (Swap Tab) ******************/
+    function switchTokens() {
+      const fromBtn = document.getElementById("fromTokenBtn");
+      const toBtn = document.getElementById("toTokenBtn");
+      const fromData = fromBtn.getAttribute("data-token") || NATIVE_TOKEN;
+      const toData = toBtn.getAttribute("data-token") || WRAPPED_TOKEN;
+      const fromHTML = fromBtn.innerHTML;
+      const toHTML = toBtn.innerHTML;
+      fromBtn.setAttribute("data-token", toData);
+      toBtn.setAttribute("data-token", fromData);
+      fromBtn.innerHTML = toHTML;
+      toBtn.innerHTML = fromHTML;
+      const fromAmount = document.getElementById("swapFromAmount").value;
+      document.getElementById("swapFromAmount").value = document.getElementById("swapToAmount").value;
+      document.getElementById("swapToAmount").value = fromAmount;
+      estimateSwap();
+      updateBalanceDisplay("swapFrom");
+      updateBalanceDisplay("swapTo");
+      updatePriceDisplay();
+    }
+
+    /***************** SWAP FUNCTIONALITY ******************/
+    async function performSwap() {
+      document.getElementById("swapStatus").innerText = "Processing swap...";
+      try {
+        let fromToken = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let toToken   = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        const amountIn = document.getElementById("swapFromAmount").value;
+        if (!amountIn || parseFloat(amountIn) <= 0) throw new Error("Enter a valid amount.");
+        const deadline = Math.floor(Date.now() / 1000) + 600;
+        let tx, path = [];
+        // Case 1: Direct deposit/withdraw for Mon <-> Wmon (1:1 conversion)
+        if (fromToken === NATIVE_TOKEN && toToken === WRAPPED_TOKEN) {
+          const wethContract = new ethers.Contract(WRAPPED_TOKEN, wethAbi, signer);
+          tx = await wethContract.deposit({ value: ethers.utils.parseEther(amountIn) });
+        } else if (fromToken === WRAPPED_TOKEN && toToken === NATIVE_TOKEN) {
+          const wethContract = new ethers.Contract(WRAPPED_TOKEN, wethAbi, signer);
+          tx = await wethContract.withdraw(ethers.utils.parseEther(amountIn));
+        }
+        // Case 2: Swap involving native Mon using the wrapped pool with liquidity check and price impact
+        else if (fromToken === NATIVE_TOKEN && toToken !== WRAPPED_TOKEN) {
+          let pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, toToken);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Mon -> Token swap (Wmon pool missing).");
+          }
+          path = [WRAPPED_TOKEN, toToken];
+          let amtIn = ethers.utils.parseEther(amountIn);
+          const tokenReserves = await getPairReserves(WRAPPED_TOKEN, toToken);
+          let idealOutput = amtIn.mul(tokenReserves.reserveOut).div(tokenReserves.reserveIn);
+          tx = await routerContract.swapExactETHForTokens(0, path, deadline, { value: amtIn });
+        }
+        else if (toToken === NATIVE_TOKEN && fromToken !== WRAPPED_TOKEN) {
+          let pairAddress = await factoryContract.getPair(fromToken, WRAPPED_TOKEN);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Token -> Mon swap (Wmon pool missing).");
+          }
+          const tokenContract = new ethers.Contract(fromToken, erc20Abi, signer);
+          const dec = await tokenContract.decimals();
+          let amtIn = ethers.utils.parseUnits(amountIn, dec);
+          await tokenContract.approve(ROUTER_ADDRESS, amtIn);
+          path = [fromToken, WRAPPED_TOKEN];
+          tx = await routerContract.swapExactTokensForETH(amtIn, 0, path, deadline);
+        }
+        // Case 3: Token-to-token swap
+        else {
+          let pairAddress = await factoryContract.getPair(fromToken, toToken);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Token -> Token swap.");
+          }
+          const tokenContract = new ethers.Contract(fromToken, erc20Abi, signer);
+          const dec = await tokenContract.decimals();
+          let amtIn = ethers.utils.parseUnits(amountIn, dec);
+          await tokenContract.approve(ROUTER_ADDRESS, amtIn);
+          path = [fromToken, toToken];
+          tx = await routerContract.swapExactTokensForTokens(amtIn, 0, path, deadline);
+        }
+        document.getElementById("swapStatus").innerText = "Transaction submitted...";
+        await tx.wait();
+        document.getElementById("swapStatus").innerText = "Swap successful!";
+        updatePriceDisplay();
+        updateAllBalanceDisplays();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("swapStatus").innerText = "Swap failed: " + error.message;
+      }
+    }
+
+    // Improved estimation with proper price impact calculation.
+    async function estimateSwap() {
+      try {
+        let fromToken = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let toToken   = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        const amountIn = document.getElementById("swapFromAmount").value;
+        if (!amountIn || parseFloat(amountIn) <= 0) {
+          document.getElementById("swapToAmount").value = "";
+          document.getElementById("priceImpact").innerText = "";
+          return;
+        }
+        let path = [];
+        let amtIn, decimals = 18;
+        // Direct Mon <-> Wmon conversion.
+        if ((fromToken === NATIVE_TOKEN && toToken === WRAPPED_TOKEN) || (fromToken === WRAPPED_TOKEN && toToken === NATIVE_TOKEN)) {
+          document.getElementById("swapToAmount").value = amountIn;
+          document.getElementById("priceImpact").innerText = "Price Impact: 0% (1:1)";
+          return;
+        }
+        // For swaps involving native Mon, use the wrapped pool.
+        if (fromToken === NATIVE_TOKEN && toToken !== WRAPPED_TOKEN) {
+          let pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, toToken);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Mon -> Token swap (Wmon pool missing).");
+          }
+          path = [WRAPPED_TOKEN, toToken];
+          amtIn = ethers.utils.parseEther(amountIn);
+          let { reserveIn, reserveOut } = await getPairReserves(WRAPPED_TOKEN, toToken);
+          let idealOutput = amtIn.mul(reserveOut).div(reserveIn);
+          const amountsOut = await routerContract.getAmountsOut(amtIn, path);
+          const actualOutput = amountsOut[amountsOut.length - 1];
+          let impact = idealOutput.sub(actualOutput).mul(100).div(idealOutput);
+          document.getElementById("priceImpact").innerText = "Price Impact: " + impact.toString() + "%";
+          const tokenContract = new ethers.Contract(toToken, erc20Abi, provider);
+          let outDecimals = await tokenContract.decimals();
+          const estimated = ethers.utils.formatUnits(actualOutput, outDecimals);
+          document.getElementById("swapToAmount").value = estimated;
+          return;
+        }
+        else if (toToken === NATIVE_TOKEN && fromToken !== WRAPPED_TOKEN) {
+          let pairAddress = await factoryContract.getPair(fromToken, WRAPPED_TOKEN);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Token -> Mon swap (Wmon pool missing).");
+          }
+          const tokenContract = new ethers.Contract(fromToken, erc20Abi, provider);
+          decimals = await tokenContract.decimals();
+          amtIn = ethers.utils.parseUnits(amountIn, decimals);
+          path = [fromToken, WRAPPED_TOKEN];
+          let { reserveIn, reserveOut } = await getPairReserves(fromToken, WRAPPED_TOKEN);
+          let idealOutput = amtIn.mul(reserveOut).div(reserveIn);
+          const amountsOut = await routerContract.getAmountsOut(amtIn, path);
+          const actualOutput = amountsOut[amountsOut.length - 1];
+          let impact = idealOutput.sub(actualOutput).mul(100).div(idealOutput);
+          document.getElementById("priceImpact").innerText = "Price Impact: " + impact.toString() + "%";
+          const tokenContractW = new ethers.Contract(WRAPPED_TOKEN, erc20Abi, provider);
+          let outDecimals = await tokenContractW.decimals();
+          const estimated = ethers.utils.formatUnits(actualOutput, outDecimals);
+          document.getElementById("swapToAmount").value = estimated;
+          return;
+        }
+        // Token-to-token swap.
+        else {
+          let pairAddress = await factoryContract.getPair(fromToken, toToken);
+          if(pairAddress === ethers.constants.AddressZero) {
+            throw new Error("No liquidity found for Token -> Token swap.");
+          }
+          const tokenContract = new ethers.Contract(fromToken, erc20Abi, provider);
+          decimals = await tokenContract.decimals();
+          amtIn = ethers.utils.parseUnits(amountIn, decimals);
+          path = [fromToken, toToken];
+          let { reserveIn, reserveOut } = await getPairReserves(fromToken, toToken);
+          let idealOutput = amtIn.mul(reserveOut).div(reserveIn);
+          const amountsOut = await routerContract.getAmountsOut(amtIn, path);
+          const actualOutput = amountsOut[amountsOut.length - 1];
+          let impact = idealOutput.sub(actualOutput).mul(100).div(idealOutput);
+          document.getElementById("priceImpact").innerText = "Price Impact: " + impact.toString() + "%";
+          let outDecimals = 18;
+          if (toToken !== NATIVE_TOKEN) {
+            const tokenContractTo = new ethers.Contract(toToken, erc20Abi, provider);
+            outDecimals = await tokenContractTo.decimals();
+          }
+          const estimated = ethers.utils.formatUnits(actualOutput, outDecimals);
+          document.getElementById("swapToAmount").value = estimated;
+          return;
+        }
+      } catch (error) {
+        console.error(error);
+        document.getElementById("swapToAmount").value = "";
+        document.getElementById("priceImpact").innerText = "Liquidity not available.";
+      }
+    }
+
+    /***************** LIQUIDITY FUNCTIONS ******************/
+    async function addLiquidity() {
+      document.getElementById("liqStatus").innerText = "Adding liquidity...";
+      try {
+        let tokenA = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let tokenB = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        const amountA = document.getElementById("liqAmountA").value;
+        const amountB = document.getElementById("liqAmountB").value;
+        if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0)
+          throw new Error("Enter valid amounts.");
+        const deadline = Math.floor(Date.now() / 1000) + 600;
+        let tx;
+        // For liquidity involving native Mon, use addLiquidityETH.
+        if ((tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) || (tokenA === WRAPPED_TOKEN && tokenB === NATIVE_TOKEN) ||
+            (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN)) {
+          const token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
+          const monAmount = tokenA === NATIVE_TOKEN ? amountA : amountB;
+          const tokenAmount = tokenA === NATIVE_TOKEN ? amountB : amountA;
+          const tokenContract = new ethers.Contract(token, erc20Abi, signer);
+          const dec = await tokenContract.decimals();
+          const amtToken = ethers.utils.parseUnits(tokenAmount, dec);
+          await tokenContract.approve(ROUTER_ADDRESS, amtToken);
+          tx = await routerContract.addLiquidityETH(
+            token,
+            amtToken,
+            0,
+            0,
+            deadline,
+            { value: ethers.utils.parseEther(monAmount) }
+          );
+        } else {
+          // Token-to-token liquidity
+          const tokenContractA = new ethers.Contract(tokenA, erc20Abi, signer);
+          const tokenContractB = new ethers.Contract(tokenB, erc20Abi, signer);
+          const decA = await tokenContractA.decimals();
+          const decB = await tokenContractB.decimals();
+          const amtA = ethers.utils.parseUnits(amountA, decA);
+          const amtB = ethers.utils.parseUnits(amountB, decB);
+          await tokenContractA.approve(ROUTER_ADDRESS, amtA);
+          await tokenContractB.approve(ROUTER_ADDRESS, amtB);
+          tx = await routerContract.addLiquidity(
+            tokenA,
+            tokenB,
+            amtA,
+            amtB,
+            0,
+            0,
+            deadline
+          );
+        }
+        document.getElementById("liqStatus").innerText = "Liquidity transaction submitted...";
+        await tx.wait();
+        document.getElementById("liqStatus").innerText = "Liquidity added successfully!";
+        updateAllBalanceDisplays();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("liqStatus").innerText = "Error: " + error.message;
+      }
+    }
+
+    async function removeLiquidity() {
+      document.getElementById("removeLiqStatus").innerText = "Approving LP tokens...";
+      try {
+        let tokenA = document.getElementById("removeTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
+        let tokenB = document.getElementById("removeTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+        // If user selects Mon paired with Wmon, this resolves to WRAPPED_TOKEN for both.
+        if (tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) {
+          throw new Error("Invalid token selection for liquidity removal. For ETH liquidity, select a non-Wmon token paired with Mon.");
+        }
+        if (tokenB === NATIVE_TOKEN && tokenA === WRAPPED_TOKEN) {
+          throw new Error("Invalid token selection for liquidity removal. For ETH liquidity, select a non-Wmon token paired with Mon.");
+        }
+        const liquidity = document.getElementById("liqLPAmount").value;
+        if (!liquidity || parseFloat(liquidity) <= 0)
+          throw new Error("Enter a valid LP amount.");
+        const deadline = Math.floor(Date.now() / 1000) + 600;
+        const lpAmount = ethers.utils.parseUnits(liquidity, 18);
+        // For removal, if one token is native, use the non-native token for pair lookup.
+        let addrA = tokenA === NATIVE_TOKEN ? WRAPPED_TOKEN : tokenA;
+        let addrB = tokenB === NATIVE_TOKEN ? WRAPPED_TOKEN : tokenB;
+        if(addrA.toLowerCase() === addrB.toLowerCase()) {
+          throw new Error("Invalid token selection for liquidity removal. Both tokens cannot be the same.");
+        }
+        let pairAddress = await factoryContract.getPair(addrA, addrB);
+        if(pairAddress === ethers.constants.AddressZero) {
+          throw new Error("LP pair does not exist.");
+        }
+        // Approve the router to spend LP tokens.
+        const lpTokenContract = new ethers.Contract(pairAddress, erc20Abi, signer);
+        let approveTx = await lpTokenContract.approve(ROUTER_ADDRESS, lpAmount);
+        document.getElementById("removeLiqStatus").innerText = "Approving LP tokens...";
+        await approveTx.wait();
+        
+        document.getElementById("removeLiqStatus").innerText = "Removing liquidity...";
+        let tx;
+        // Use removeLiquidityETH if native is involved.
+        if (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN) {
+          // Determine the non-native token.
+          const token = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
+          tx = await routerContract.removeLiquidityETH(token, lpAmount, 1, 1,
+          deadline, { gasLimit: 500000 });
+        } else {
+          tx = await routerContract.removeLiquidity(tokenA, tokenB, lpAmount, 1,
+          1, { gasLimit: 500000 });
+        }
+        document.getElementById("removeLiqStatus").innerText = "Liquidity removal submitted...";
+        await tx.wait();
+        document.getElementById("removeLiqStatus").innerText = "Liquidity removed successfully!";
+        updateAllBalanceDisplays();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("removeLiqStatus").innerText = "Error: " + error.message;
+      }
+    }
+
+    /***************** PRICE DISPLAY FUNCTION ******************/
+    async function updatePriceDisplay() {
+      let fromToken = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+      let toToken = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+      let priceMsg = "";
+      // For direct Mon/Wmon conversion, display 1:1.
+      if ((fromToken === NATIVE_TOKEN && toToken === WRAPPED_TOKEN) || (fromToken === WRAPPED_TOKEN && toToken === NATIVE_TOKEN)) {
+        priceMsg = "1:1 (Mon/Wmon)";
+      }
+      else if (fromToken === NATIVE_TOKEN) {
+        try {
+          let pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, toToken);
+          if(pairAddress === ethers.constants.AddressZero) {
+            priceMsg = "Liquidity not available for price estimation.";
+          } else {
+            const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [WRAPPED_TOKEN, toToken]);
+            const tokenOut = amounts[amounts.length - 1];
+            const price = ETH_PRICE_USD / parseFloat(ethers.utils.formatUnits(tokenOut, 18));
+            priceMsg = `1 ${toToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
+          }
+        } catch (e) {
+          priceMsg = "Liquidity not available for price estimation.";
+        }
+      }
+      else if (toToken === NATIVE_TOKEN) {
+        try {
+          let pairAddress = await factoryContract.getPair(fromToken, WRAPPED_TOKEN);
+          if(pairAddress === ethers.constants.AddressZero) {
+            priceMsg = "Liquidity not available for price estimation.";
+          } else {
+            const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [fromToken, WRAPPED_TOKEN]);
+            const tokenOut = amounts[amounts.length - 1];
+            const price = ETH_PRICE_USD / parseFloat(ethers.utils.formatUnits(tokenOut, 18));
+            priceMsg = `1 ${fromToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
+          }
+        } catch (e) {
+          priceMsg = "Liquidity not available for price estimation.";
+        }
+      }
+      document.getElementById("priceDisplay").innerText = priceMsg;
+    }
+  </script>
+</body>
+</html>
