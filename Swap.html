@@ -2008,45 +2008,53 @@ rel="stylesheet">
 
     /***************** PRICE DISPLAY FUNCTION ******************/
     async function updatePriceDisplay() {
-      let fromToken = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
-      let toToken = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
-      let priceMsg = "";
-      // For direct Mon/Wmon conversion, display 1:1.
-      if ((fromToken === NATIVE_TOKEN && toToken === WRAPPED_TOKEN) || (fromToken === WRAPPED_TOKEN && toToken === NATIVE_TOKEN)) {
-        priceMsg = "1:1 (Mon/Wmon)";
+  let fromToken = document.getElementById("fromTokenBtn").getAttribute("data-token") || NATIVE_TOKEN;
+  let toToken = document.getElementById("toTokenBtn").getAttribute("data-token") || WRAPPED_TOKEN;
+  let priceMsg = "";
+
+  // For direct Mon/Wmon conversion, display 1:1.
+  if ((fromToken === NATIVE_TOKEN && toToken === WRAPPED_TOKEN) || (fromToken === WRAPPED_TOKEN && toToken === NATIVE_TOKEN)) {
+    priceMsg = "1:1 (Mon/Wmon)";
+  }
+  // When swapping from native Mon to a token:
+  else if (fromToken === NATIVE_TOKEN) {
+    try {
+      let pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, toToken);
+      if (pairAddress === ethers.constants.AddressZero) {
+        priceMsg = "Liquidity not available for price estimation.";
+      } else {
+        const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [WRAPPED_TOKEN, toToken]);
+        const tokenOut = amounts[amounts.length - 1];
+        // Here, tokenOut represents how many tokens you get for 1 ETH.
+        // So, the price per token in USD is ETH_PRICE_USD divided by tokenOut.
+        const price = ETH_PRICE_USD / parseFloat(ethers.utils.formatUnits(tokenOut, 18));
+        priceMsg = `1 ${toToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
       }
-      else if (fromToken === NATIVE_TOKEN) {
-        try {
-          let pairAddress = await factoryContract.getPair(WRAPPED_TOKEN, toToken);
-          if(pairAddress === ethers.constants.AddressZero) {
-            priceMsg = "Liquidity not available for price estimation.";
-          } else {
-            const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [WRAPPED_TOKEN, toToken]);
-            const tokenOut = amounts[amounts.length - 1];
-            const price = ETH_PRICE_USD / parseFloat(ethers.utils.formatUnits(tokenOut, 18));
-            priceMsg = `1 ${toToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
-          }
-        } catch (e) {
-          priceMsg = "Liquidity not available for price estimation.";
-        }
-      }
-      else if (toToken === NATIVE_TOKEN) {
-        try {
-          let pairAddress = await factoryContract.getPair(fromToken, WRAPPED_TOKEN);
-          if(pairAddress === ethers.constants.AddressZero) {
-            priceMsg = "Liquidity not available for price estimation.";
-          } else {
-            const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [fromToken, WRAPPED_TOKEN]);
-            const tokenOut = amounts[amounts.length - 1];
-            const price = ETH_PRICE_USD / parseFloat(ethers.utils.formatUnits(tokenOut, 18));
-            priceMsg = `1 ${fromToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
-          }
-        } catch (e) {
-          priceMsg = "Liquidity not available for price estimation.";
-        }
-      }
-      document.getElementById("priceDisplay").innerText = priceMsg;
+    } catch (e) {
+      priceMsg = "Liquidity not available for price estimation.";
     }
+  }
+  // When swapping from a token to native Mon:
+  else if (toToken === NATIVE_TOKEN) {
+    try {
+      let pairAddress = await factoryContract.getPair(fromToken, WRAPPED_TOKEN);
+      if (pairAddress === ethers.constants.AddressZero) {
+        priceMsg = "Liquidity not available for price estimation.";
+      } else {
+        const amounts = await routerContract.getAmountsOut(ethers.utils.parseEther("1"), [fromToken, WRAPPED_TOKEN]);
+        const tokenOut = amounts[amounts.length - 1];
+        // Here, tokenOut is the amount of ETH obtained for 1 token.
+        // Therefore, the token price in USD is tokenOut multiplied by ETH_PRICE_USD.
+        const price = parseFloat(ethers.utils.formatUnits(tokenOut, 18)) * ETH_PRICE_USD;
+        priceMsg = `1 ${fromToken === WRAPPED_TOKEN ? "Wmon" : "Token"} ≈ $${price.toFixed(4)}`;
+      }
+    } catch (e) {
+      priceMsg = "Liquidity not available for price estimation.";
+    }
+  }
+
+  document.getElementById("priceDisplay").innerText = priceMsg;
+}
     document.getElementById("lpInfoIcon").addEventListener("click", function() {
   alert("Due to a permanently locked minimum liquidity and rounding errors in the calculation, you cannot remove 100% of your LP tokens. The maximum removable percentage is 99.999999%.");
 });
