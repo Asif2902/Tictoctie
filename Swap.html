@@ -1430,8 +1430,9 @@ const ETH_PRICE_USD   = 5; // Hard-coded price for Mon
 
 // Caching objects for optimization
 const decimalsCache = {};
-const pairCache = new Map();  
+const pairCache = new Map();  // key: sorted token addresses, value: pairAddress
 
+// Default tokens and local storage import
 let defaultTokens = [
   { address: NATIVE_TOKEN, symbol: "Mon", logo: "https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" },
   { address: WRAPPED_TOKEN, symbol: "Wmon", logo: "https://cdn.prod.website-files.com/667c57e6f9254a4b6d914440/667d7104644c621965495f6e_LogoMark.svg" }
@@ -1442,25 +1443,6 @@ let tokenList = [...defaultTokens, ...importedTokens];
 // Global provider, signer, contracts, user address.
 let provider, signer, routerContract, factoryContract, userAddress;
 let currentTokenField = ""; // e.g., "swapFrom", "swapTo", etc.
-
-/***************** INITIAL UI UPDATE FUNCTION ******************/
-function updateTokenDisplay() {
-  // Initialize swap buttons
-  document.getElementById("fromTokenBtn").setAttribute("data-token", NATIVE_TOKEN);
-  document.getElementById("fromTokenBtn").innerHTML = `<span>Mon</span>`;
-  document.getElementById("toTokenBtn").setAttribute("data-token", WRAPPED_TOKEN);
-  document.getElementById("toTokenBtn").innerHTML = `<span>Wmon</span>`;
-  // Initialize liquidity buttons
-  document.getElementById("liqTokenABtn").setAttribute("data-token", NATIVE_TOKEN);
-  document.getElementById("liqTokenABtn").innerHTML = `<span>Mon</span>`;
-  document.getElementById("liqTokenBBtn").setAttribute("data-token", WRAPPED_TOKEN);
-  document.getElementById("liqTokenBBtn").innerHTML = `<span>Wmon</span>`;
-  // Initialize liquidity removal buttons
-  document.getElementById("removeTokenABtn").setAttribute("data-token", NATIVE_TOKEN);
-  document.getElementById("removeTokenABtn").innerHTML = `<span>Mon</span>`;
-  document.getElementById("removeTokenBBtn").setAttribute("data-token", WRAPPED_TOKEN);
-  document.getElementById("removeTokenBBtn").innerHTML = `<span>Wmon</span>`;
-}
 
 /***************** UTILITY FUNCTIONS ******************/
 function formatNumber(num) {
@@ -1559,6 +1541,17 @@ async function initProvider() {
   }
   routerContract = new ethers.Contract(ROUTER_ADDRESS, routerAbi, signer);
   factoryContract = new ethers.Contract(FACTORY_ADDRESS, factoryAbi, provider);
+}
+
+// New Code: Define updateTokenDisplay
+function updateTokenDisplay() {
+  // Set default tokens for the swap interface
+  document.getElementById("fromTokenBtn").innerHTML =
+    `<img src="${defaultTokens[0].logo}" alt="${defaultTokens[0].symbol}"><span>${defaultTokens[0].symbol}</span>`;
+  document.getElementById("fromTokenBtn").setAttribute("data-token", defaultTokens[0].address);
+  document.getElementById("toTokenBtn").innerHTML =
+    `<img src="${defaultTokens[1].logo}" alt="${defaultTokens[1].symbol}"><span>${defaultTokens[1].symbol}</span>`;
+  document.getElementById("toTokenBtn").setAttribute("data-token", defaultTokens[1].address);
 }
 
 window.addEventListener("load", async () => {
@@ -1931,68 +1924,76 @@ async function estimateSwap() {
 async function addLiquidity() {
   document.getElementById("liqStatus").innerText = "Adding liquidity...";
   try {
+    // Get tokens and amounts from DOM
     let tokenA = document.getElementById("liqTokenABtn").getAttribute("data-token") || NATIVE_TOKEN;
     let tokenB = document.getElementById("liqTokenBBtn").getAttribute("data-token") || WRAPPED_TOKEN;
     let amountA = document.getElementById("liqAmountA").value.trim();
     let amountB = document.getElementById("liqAmountB").value.trim();
 
-    // Auto-calculate missing amount only if one field is empty and a pool already exists.
-    if ((amountA && !amountB) || (amountB && !amountA)) {
-      let isNative = (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN);
-      let pairAddress;
-      if (isNative) {
-        let tokenNonNative = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
-        pairAddress = await getPairAddress(WRAPPED_TOKEN, tokenNonNative);
-      } else {
-        pairAddress = await getPairAddress(tokenA, tokenB);
-      }
-      if (pairAddress !== ethers.constants.AddressZero) {
-        let reserves;
-        if (isNative) {
-          let tokenNonNative = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
-          reserves = await getPairReserves(WRAPPED_TOKEN, tokenNonNative);
-          if (tokenA === NATIVE_TOKEN && amountA && !amountB) {
-            let amtA = ethers.utils.parseEther(amountA);
-            let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
-            const dec = await getDecimals(tokenNonNative);
-            amountB = ethers.utils.formatUnits(optimalB, dec);
-            document.getElementById("liqAmountB").value = amountB;
-          } else if (tokenB === NATIVE_TOKEN && amountB && !amountA) {
-            let amtB = ethers.utils.parseEther(amountB);
-            let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
-            amountA = ethers.utils.formatEther(optimalA);
-            document.getElementById("liqAmountA").value = amountA;
-          }
-        } else {
-          reserves = await getPairReserves(tokenA, tokenB);
-          if (amountA && !amountB) {
-            let decA = await getDecimals(tokenA);
-            let decB = await getDecimals(tokenB);
-            let amtA = ethers.utils.parseUnits(amountA, decA);
-            let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
-            amountB = ethers.utils.formatUnits(optimalB, decB);
-            document.getElementById("liqAmountB").value = amountB;
-          } else if (amountB && !amountA) {
-            let decA = await getDecimals(tokenA);
-            let decB = await getDecimals(tokenB);
-            let amtB = ethers.utils.parseUnits(amountB, decB);
-            let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
-            amountA = ethers.utils.formatUnits(optimalA, decA);
-            document.getElementById("liqAmountA").value = amountA;
-          }
-        }
-      }
-      // If no pool exists, do nothing—user enters both amounts manually.
+    // Determine if native token is involved
+    let isNative = (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN);
+    let tokenNonNative = isNative ? (tokenA === NATIVE_TOKEN ? tokenB : tokenA) : null;
+    
+    // Get the pair address. For native pairs, use WRAPPED_TOKEN to find the existing pool.
+    let pairAddress = isNative
+      ? await getPairAddress(WRAPPED_TOKEN, tokenNonNative)
+      : await getPairAddress(tokenA, tokenB);
+      
+    // Enforce that liquidity can only be added to an existing pool
+    if (pairAddress === ethers.constants.AddressZero) {
+      throw new Error("The selected liquidity pool does not exist. Please choose an existing pair.");
     }
 
+    // Auto-calculate missing amount if exactly one value is provided
+    if ((amountA && !amountB) || (amountB && !amountA)) {
+      let reserves;
+      if (isNative) {
+        reserves = await getPairReserves(WRAPPED_TOKEN, tokenNonNative);
+        if (tokenA === NATIVE_TOKEN && amountA && !amountB) {
+          let amtA = ethers.utils.parseEther(amountA);
+          let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
+          const dec = await getDecimals(tokenNonNative);
+          amountB = ethers.utils.formatUnits(optimalB, dec);
+          document.getElementById("liqAmountB").value = amountB;
+        } else if (tokenB === NATIVE_TOKEN && amountB && !amountA) {
+          let amtB = ethers.utils.parseEther(amountB);
+          let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
+          amountA = ethers.utils.formatEther(optimalA);
+          document.getElementById("liqAmountA").value = amountA;
+        }
+      } else {
+        reserves = await getPairReserves(tokenA, tokenB);
+        if (amountA && !amountB) {
+          let decA = await getDecimals(tokenA);
+          let decB = await getDecimals(tokenB);
+          let amtA = ethers.utils.parseUnits(amountA, decA);
+          let optimalB = amtA.mul(reserves.reserveOut).div(reserves.reserveIn);
+          amountB = ethers.utils.formatUnits(optimalB, decB);
+          document.getElementById("liqAmountB").value = amountB;
+        } else if (amountB && !amountA) {
+          let decA = await getDecimals(tokenA);
+          let decB = await getDecimals(tokenB);
+          let amtB = ethers.utils.parseUnits(amountB, decB);
+          let optimalA = amtB.mul(reserves.reserveIn).div(reserves.reserveOut);
+          amountA = ethers.utils.formatUnits(optimalA, decA);
+          document.getElementById("liqAmountA").value = amountA;
+        }
+      }
+    }
+
+    // Validate that both amounts are now present and valid
     if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0)
       throw new Error("Enter valid amounts for both tokens.");
 
     const deadline = Math.floor(Date.now() / 1000) + 600;
     let tx;
-    if ((tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) ||
-        (tokenA === WRAPPED_TOKEN && tokenB === NATIVE_TOKEN) ||
-        (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN)) {
+    
+    // Check if one token is native and call the appropriate router method
+    if (
+      (tokenA === NATIVE_TOKEN && tokenB === WRAPPED_TOKEN) ||
+      (tokenA === WRAPPED_TOKEN && tokenB === NATIVE_TOKEN) ||
+      (tokenA === NATIVE_TOKEN || tokenB === NATIVE_TOKEN)
+    ) {
       const tokenNonNative = tokenA === NATIVE_TOKEN ? tokenB : tokenA;
       const monAmount = tokenA === NATIVE_TOKEN ? amountA : amountB;
       const tokenAmount = tokenA === NATIVE_TOKEN ? amountB : amountA;
@@ -2009,6 +2010,7 @@ async function addLiquidity() {
         { value: ethers.utils.parseEther(monAmount) }
       );
     } else {
+      // If both tokens are ERC-20, approve both tokens and add liquidity
       let decA = await getDecimals(tokenA);
       let decB = await getDecimals(tokenB);
       const amtA = ethers.utils.parseUnits(amountA, decA);
@@ -2029,6 +2031,7 @@ async function addLiquidity() {
         deadline
       );
     }
+
     document.getElementById("liqStatus").innerText = "Liquidity transaction submitted...";
     await tx.wait();
     document.getElementById("liqStatus").innerText = "Liquidity added successfully!";
@@ -2038,6 +2041,7 @@ async function addLiquidity() {
     document.getElementById("liqStatus").innerText = "Error: " + error.message;
   }
 }
+
 
 async function removeLiquidity() {
   document.getElementById("removeLiqStatus").innerText = "Approving LP tokens...";
