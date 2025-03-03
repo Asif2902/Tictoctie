@@ -1935,10 +1935,12 @@ const wmonABI = [
       };
     }
 
+
     async function isStable(tokenAddress) {
-      const factoryContract = new ethers.Contract(FACTORY_ADDRESS, factoryABI, provider);
-      return await factoryContract.isStableCoin(tokenAddress);
-    }
+  if (tokenAddress === "MON") return false;
+  const factoryContract = new ethers.Contract(FACTORY_ADDRESS, factoryABI, provider);
+  return await factoryContract.isStableCoin(tokenAddress);
+}
 
     // Wallet & Network Connection
     async function connectWallet() {
@@ -2302,80 +2304,78 @@ const wmonABI = [
       }
     });
 
-    document.getElementById("swapButton").addEventListener("click", async () => {
-      const amountInRaw = document.getElementById("swapAmountIn").value;
-      if (!selectedSwapTokenA || !selectedSwapTokenB) return notify("Select both tokens", "error");
-      if (!amountInRaw || parseFloat(amountInRaw) <= 0) return notify("Enter a valid amount", "error");
+document.getElementById("swapButton").addEventListener("click", async () => {
+  const amountInRaw = document.getElementById("swapAmountIn").value;
+  if (!selectedSwapTokenA || !selectedSwapTokenB) return notify("Select both tokens", "error");
+  if (!amountInRaw || parseFloat(amountInRaw) <= 0) return notify("Enter a valid amount", "error");
 
-      let amountIn = ethers.utils.parseUnits(amountInRaw, selectedSwapTokenA.decimals);
-      try {
-        if ((selectedSwapTokenA.symbol === "MON" && selectedSwapTokenB.symbol === "WMON") ||
-            (selectedSwapTokenA.symbol === "WMON" && selectedSwapTokenB.symbol === "MON")) {
-          if (selectedSwapTokenA.symbol === "MON") {
-            await wrapMon(amountIn);
-          } else {
-            await unwrapMon(amountIn);
-          }
-          fetchSwapBalances();
-          return;
-        }
-
-        const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerABI, signer);
-        let deadline = Math.floor(Date.now() / 1000) + 600;
-        let tx;
-        const isStableIn = await isStable(selectedSwapTokenA.address);
-        const isStableOut = await isStable(selectedSwapTokenB.address);
-        if (isStableIn && isStableOut) {
-          await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
-          tx = await routerContract.swapExactStableForStable(
-            amountIn,
-            selectedSwapTokenA.address,
-            selectedSwapTokenB.address,
-            deadline
-          );
-        } else {
-          let path = [
-            selectedSwapTokenA.address === "MON" ? WMON_ADDRESS : selectedSwapTokenA.address,
-            selectedSwapTokenB.address === "MON" ? WMON_ADDRESS : selectedSwapTokenB.address
-          ];
-          let amountsOut = await routerContract.getAmountsOut(amountIn, path);
-          let expectedOut = amountsOut[amountsOut.length - 1];
-          let amountOutMin = expectedOut.mul(95).div(100);
-          if (selectedSwapTokenA.address === "MON") {
-            tx = await routerContract.swapExactETHForTokens(
-              amountOutMin,
-              path,
-              userAddress,
-              deadline,
-              { value: amountIn }
-            );
-          } else if (selectedSwapTokenB.address === "MON") {
-            await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
-            tx = await routerContract.swapExactTokensForETH(
-              amountIn,
-              amountOutMin,
-              path,
-              userAddress,
-              deadline
-            );
-          } else {
-            await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
-            tx = await routerContract.swapExactTokensForTokens(
-              amountIn,
-              amountOutMin,
-              path
-            );
-          }
-        }
-        notify("Swap transaction sent", "info");
-        await tx.wait();
-        notify("Swap executed successfully", "success");
-        fetchSwapBalances();
-      } catch (error) {
-        console.error("Swap error:", error);
-        notify("Swap failed: " + (error.reason || error.message), "error");
+  let amountIn = ethers.utils.parseUnits(amountInRaw, selectedSwapTokenA.decimals);
+  try {
+    if ((selectedSwapTokenA.symbol === "MON" && selectedSwapTokenB.symbol === "WMON") ||
+        (selectedSwapTokenA.symbol === "WMON" && selectedSwapTokenB.symbol === "MON")) {
+      if (selectedSwapTokenA.symbol === "MON") {
+        await wrapMon(amountIn);
+      } else {
+        await unwrapMon(amountIn);
       }
-    });
+      fetchSwapBalances();
+      return;
+    }
+
+    const routerContract = new ethers.Contract(ROUTER_ADDRESS, routerABI, signer);
+    let deadline = Math.floor(Date.now() / 1000) + 600;
+    let tx;
+    const isStableIn = await isStable(selectedSwapTokenA.address);
+    const isStableOut = await isStable(selectedSwapTokenB.address);
+    if (isStableIn && isStableOut) {
+      await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
+      tx = await routerContract.swapExactStableForStable(
+        amountIn,
+        selectedSwapTokenA.address,
+        selectedSwapTokenB.address,
+        deadline
+      );
+    } else {
+      let path = [
+        selectedSwapTokenA.address === "MON" ? WMON_ADDRESS : selectedSwapTokenA.address,
+        selectedSwapTokenB.address === "MON" ? WMON_ADDRESS : selectedSwapTokenB.address
+      ];
+      let amountsOut = await routerContract.getAmountsOut(amountIn, path);
+      let expectedOut = amountsOut[amountsOut.length - 1];
+      let amountOutMin = expectedOut.mul(95).div(100);
+      if (selectedSwapTokenA.address === "MON") {
+        tx = await routerContract.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          deadline,
+          { value: amountIn }
+        );
+      } else if (selectedSwapTokenB.address === "MON") {
+        await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
+        tx = await routerContract.swapExactTokensForETH(
+          amountIn,
+          amountOutMin,
+          path,
+          deadline
+        );
+      } else {
+        await ensureApproval(selectedSwapTokenA, amountIn, ROUTER_ADDRESS);
+        tx = await routerContract.swapExactTokensForTokens(
+          amountIn,
+          amountOutMin,
+          path
+        );
+      }
+    }
+    notify("Swap transaction sent", "info");
+    await tx.wait();
+    notify("Swap executed successfully", "success");
+    fetchSwapBalances();
+  } catch (error) {
+    console.error("Swap error:", error);
+    notify("Swap failed: " + (error.reason || error.message), "error");
+  }
+});
 
     // Add Liquidity Functions
     document.getElementById("liqAmountA").addEventListener("input", async () => {
