@@ -8,6 +8,9 @@
             {
       "src": "/swap",
       "dest": "/Swap.html"
-    }
+    },
+    {
+    "src": "/agg"
+    "dest": "/Agg.html"}
     ]
 }
