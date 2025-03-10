@@ -10,7 +10,7 @@
       "dest": "/Swap.html"
     },
     {
-    "src": "/agg"
+    "src": "/agg",
     "dest": "/Agg.html"}
     ]
 }
