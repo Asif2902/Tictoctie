@@ -66,7 +66,20 @@
       border-radius: 8px;
       margin-top: 10px;
       display: none;
+      background-color: #fff;
     }
+    /* Search input within token list */
+    .token-search {
+      width: 100%;
+      padding: 8px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    /* Container for token items */
+    .token-items { }
     .token-item {
       display: flex;
       align-items: center;
@@ -142,11 +155,6 @@
     .notification.error { border-color: red; }
     .notification.info { border-color: blue; }
     .balance-display { font-size: 14px; margin-top: 5px; }
-    .import-section {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-    }
   </style>
 </head>
 <body>
@@ -167,7 +175,7 @@
         </div>
         <div class="balance-display" id="fromBalanceDisplay">Balance: <span id="fromBalance">-</span></div>
         <div class="scrollable-tokens" id="fromTokenList">
-          <!-- From token items injected here -->
+          <!-- Search input and token items will be injected here -->
         </div>
       </div>
 
@@ -185,7 +193,7 @@
         </div>
         <div class="balance-display" id="toBalanceDisplay">Balance: <span id="toBalance">-</span></div>
         <div class="scrollable-tokens" id="toTokenList">
-          <!-- To token items injected here -->
+          <!-- Search input and token items will be injected here -->
         </div>
       </div>
 
@@ -202,12 +210,6 @@
 
       <!-- Swap Button -->
       <button id="swapButton">Swap</button>
-    </div>
-
-    <!-- Global Import Token Section -->
-    <div class="import-section">
-      <input type="text" id="importTokenInput" placeholder="Import token by address" />
-      <button id="importTokenBtn">Import Token</button>
     </div>
   </div>
   <div id="notifications"></div>
@@ -312,97 +314,7 @@
     }
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
 
-    // --- Token List Loading ---
-    function loadTokens() {
-      const fromList = document.getElementById("fromTokenList");
-      const toList = document.getElementById("toTokenList");
-      // Clear lists first
-      fromList.innerHTML = "";
-      toList.innerHTML = "";
-      const tokens = [...defaultTokens, ...importedTokens];
-      tokens.forEach(token => {
-        // Create token item for From list
-        const itemFrom = document.createElement("div");
-        itemFrom.className = "token-item";
-        if(token.logo && token.logo !== "?") {
-          itemFrom.innerHTML = `<img src="${token.logo}" alt="${token.symbol} Logo"><span>${token.symbol}</span>`;
-        } else {
-          itemFrom.innerHTML = `<img src="https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png" alt="Default Token Logo" class="fallback-logo"><span>${token.symbol}</span>`;
-        }
-        itemFrom.addEventListener("click", () => {
-          fromToken = token;
-          document.getElementById("fromTokenLogo").src = token.logo && token.logo !== "?" ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-          document.getElementById("fromTokenSymbol").innerText = token.symbol;
-          fromList.style.display = "none";
-          fetchTokenBalance(token, "from");
-          estimateSwap();
-        });
-        fromList.appendChild(itemFrom);
-
-        // Create token item for To list
-        const itemTo = document.createElement("div");
-        itemTo.className = "token-item";
-        if(token.logo && token.logo !== "?") {
-          itemTo.innerHTML = `<img src="${token.logo}" alt="${token.symbol} Logo"><span>${token.symbol}</span>`;
-        } else {
-          itemTo.innerHTML = `<img src="https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png" alt="Default Token Logo" class="fallback-logo"><span>${token.symbol}</span>`;
-        }
-        itemTo.addEventListener("click", () => {
-          toToken = token;
-          document.getElementById("toTokenLogo").src = token.logo && token.logo !== "?" ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-          document.getElementById("toTokenSymbol").innerText = token.symbol;
-          toList.style.display = "none";
-          fetchTokenBalance(token, "to");
-          estimateSwap();
-        });
-        toList.appendChild(itemTo);
-      });
-    }
-    loadTokens();
-
-    // Allow re-opening token lists by clicking on token-select areas
-    document.getElementById("fromTokenSelect").addEventListener("click", () => {
-      const list = document.getElementById("fromTokenList");
-      list.style.display = list.style.display === "none" || list.style.display === "" ? "block" : "none";
-    });
-    document.getElementById("toTokenSelect").addEventListener("click", () => {
-      const list = document.getElementById("toTokenList");
-      list.style.display = list.style.display === "none" || list.style.display === "" ? "block" : "none";
-    });
-
-    // --- Default Pair: MON -> USDT ---
-    function setDefaultPair() {
-      const mon = defaultTokens.find(t => t.symbol === "MON");
-      const usdt = defaultTokens.find(t => t.symbol === "USDT");
-      if(mon && usdt) {
-        fromToken = mon;
-        toToken = usdt;
-        document.getElementById("fromTokenLogo").src = mon.logo && mon.logo !== "?" ? mon.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-        document.getElementById("fromTokenSymbol").innerText = mon.symbol;
-        document.getElementById("toTokenLogo").src = usdt.logo && usdt.logo !== "?" ? usdt.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-        document.getElementById("toTokenSymbol").innerText = usdt.symbol;
-        fetchTokenBalance(mon, "from");
-        fetchTokenBalance(usdt, "to");
-      }
-    }
-    setDefaultPair();
-
-    // --- Switch Pair Button ---
-    document.getElementById("switchPair").addEventListener("click", () => {
-      const temp = fromToken;
-      fromToken = toToken;
-      toToken = temp;
-      // Update UI
-      document.getElementById("fromTokenLogo").src = fromToken.logo && fromToken.logo !== "?" ? fromToken.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-      document.getElementById("fromTokenSymbol").innerText = fromToken.symbol;
-      document.getElementById("toTokenLogo").src = toToken.logo && toToken.logo !== "?" ? toToken.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
-      document.getElementById("toTokenSymbol").innerText = toToken.symbol;
-      fetchTokenBalance(fromToken, "from");
-      fetchTokenBalance(toToken, "to");
-      estimateSwap();
-    });
-
-    // --- Global Import Token (saves to localStorage) ---
+    // --- Import Token (called when user pastes a valid contract address in the search input) ---
     async function importToken(address) {
       try {
         const tokenContract = new ethers.Contract(address, [
@@ -417,15 +329,172 @@
         importedTokens.push(token);
         localStorage.setItem('importedTokens', JSON.stringify(importedTokens));
         notify("Token imported: " + symbol, "success");
-        loadTokens();
+        return token;
       } catch (error) {
         console.error(error);
         notify("Failed to import token", "error");
+        return null;
       }
     }
-    document.getElementById("importTokenBtn").addEventListener("click", () => {
-      const addr = document.getElementById("importTokenInput").value.trim();
-      if(addr) { importToken(addr); }
+
+    // --- Token List Loading with Search ---
+    function loadTokens() {
+      const tokens = [...defaultTokens, ...importedTokens];
+      
+      // From token list
+      const fromList = document.getElementById("fromTokenList");
+      fromList.innerHTML = "";
+      const fromSearch = document.createElement("input");
+      fromSearch.type = "text";
+      fromSearch.placeholder = "Search token symbol or paste contract address";
+      fromSearch.className = "token-search";
+      fromList.appendChild(fromSearch);
+      const fromItemsContainer = document.createElement("div");
+      fromItemsContainer.className = "token-items";
+      fromList.appendChild(fromItemsContainer);
+      
+      // To token list
+      const toList = document.getElementById("toTokenList");
+      toList.innerHTML = "";
+      const toSearch = document.createElement("input");
+      toSearch.type = "text";
+      toSearch.placeholder = "Search token symbol or paste contract address";
+      toSearch.className = "token-search";
+      toList.appendChild(toSearch);
+      const toItemsContainer = document.createElement("div");
+      toItemsContainer.className = "token-items";
+      toList.appendChild(toItemsContainer);
+      
+      // Helper: Render token items with a provided onSelect callback
+      function renderTokenItems(container, tokensArray, onSelect) {
+        container.innerHTML = "";
+        tokensArray.forEach(token => {
+          const item = document.createElement("div");
+          item.className = "token-item";
+          if(token.logo && token.logo !== "?") {
+            item.innerHTML = `<img src="${token.logo}" alt="${token.symbol} Logo"><span>${token.symbol}</span>`;
+          } else {
+            item.innerHTML = `<img src="https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png" alt="Default Token Logo" class="fallback-logo"><span>${token.symbol}</span>`;
+          }
+          item.addEventListener("click", () => {
+            onSelect(token);
+          });
+          container.appendChild(item);
+        });
+      }
+      
+      // Set up search input for From list
+      fromSearch.addEventListener("input", debounce(async function(e) {
+        const term = e.target.value.trim().toLowerCase();
+        let filtered = tokens.filter(token => token.symbol.toLowerCase().includes(term));
+        if(term.startsWith("0x") && term.length === 42) {
+          const exists = tokens.find(t => t.address.toLowerCase() === term);
+          if(!exists) {
+            const importedToken = await importToken(term);
+            if(importedToken) {
+              tokens.push(importedToken);
+              filtered = tokens.filter(token => token.symbol.toLowerCase().includes(term) || token.address.toLowerCase() === term);
+            }
+          } else {
+            filtered = [exists];
+          }
+        }
+        renderTokenItems(fromItemsContainer, filtered, (token) => {
+          fromToken = token;
+          document.getElementById("fromTokenLogo").src = (token.logo && token.logo !== "?") ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+          document.getElementById("fromTokenSymbol").innerText = token.symbol;
+          fromList.style.display = "none";
+          fetchTokenBalance(token, "from");
+          estimateSwap();
+        });
+      }, 300));
+      
+      // Set up search input for To list
+      toSearch.addEventListener("input", debounce(async function(e) {
+        const term = e.target.value.trim().toLowerCase();
+        let filtered = tokens.filter(token => token.symbol.toLowerCase().includes(term));
+        if(term.startsWith("0x") && term.length === 42) {
+          const exists = tokens.find(t => t.address.toLowerCase() === term);
+          if(!exists) {
+            const importedToken = await importToken(term);
+            if(importedToken) {
+              tokens.push(importedToken);
+              filtered = tokens.filter(token => token.symbol.toLowerCase().includes(term) || token.address.toLowerCase() === term);
+            }
+          } else {
+            filtered = [exists];
+          }
+        }
+        renderTokenItems(toItemsContainer, filtered, (token) => {
+          toToken = token;
+          document.getElementById("toTokenLogo").src = (token.logo && token.logo !== "?") ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+          document.getElementById("toTokenSymbol").innerText = token.symbol;
+          toList.style.display = "none";
+          fetchTokenBalance(token, "to");
+          estimateSwap();
+        });
+      }, 300));
+      
+      // Initially render full list for both From and To lists
+      renderTokenItems(fromItemsContainer, tokens, (token) => {
+        fromToken = token;
+        document.getElementById("fromTokenLogo").src = (token.logo && token.logo !== "?") ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+        document.getElementById("fromTokenSymbol").innerText = token.symbol;
+        fromList.style.display = "none";
+        fetchTokenBalance(token, "from");
+        estimateSwap();
+      });
+      renderTokenItems(toItemsContainer, tokens, (token) => {
+        toToken = token;
+        document.getElementById("toTokenLogo").src = (token.logo && token.logo !== "?") ? token.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+        document.getElementById("toTokenSymbol").innerText = token.symbol;
+        toList.style.display = "none";
+        fetchTokenBalance(token, "to");
+        estimateSwap();
+      });
+    }
+    loadTokens();
+
+    // Allow re-opening token lists by clicking on token-select areas
+    document.getElementById("fromTokenSelect").addEventListener("click", () => {
+      const list = document.getElementById("fromTokenList");
+      list.style.display = (list.style.display === "none" || list.style.display === "") ? "block" : "none";
+    });
+    document.getElementById("toTokenSelect").addEventListener("click", () => {
+      const list = document.getElementById("toTokenList");
+      list.style.display = (list.style.display === "none" || list.style.display === "") ? "block" : "none";
+    });
+
+    // --- Default Pair: MON -> USDT ---
+    function setDefaultPair() {
+      const mon = defaultTokens.find(t => t.symbol === "MON");
+      const usdt = defaultTokens.find(t => t.symbol === "USDT");
+      if(mon && usdt) {
+        fromToken = mon;
+        toToken = usdt;
+        document.getElementById("fromTokenLogo").src = (mon.logo && mon.logo !== "?") ? mon.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+        document.getElementById("fromTokenSymbol").innerText = mon.symbol;
+        document.getElementById("toTokenLogo").src = (usdt.logo && usdt.logo !== "?") ? usdt.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+        document.getElementById("toTokenSymbol").innerText = usdt.symbol;
+        fetchTokenBalance(mon, "from");
+        fetchTokenBalance(usdt, "to");
+      }
+    }
+    setDefaultPair();
+
+    // --- Switch Pair Button ---
+    document.getElementById("switchPair").addEventListener("click", () => {
+      const temp = fromToken;
+      fromToken = toToken;
+      toToken = temp;
+      // Update UI
+      document.getElementById("fromTokenLogo").src = (fromToken.logo && fromToken.logo !== "?") ? fromToken.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+      document.getElementById("fromTokenSymbol").innerText = fromToken.symbol;
+      document.getElementById("toTokenLogo").src = (toToken.logo && toToken.logo !== "?") ? toToken.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
+      document.getElementById("toTokenSymbol").innerText = toToken.symbol;
+      fetchTokenBalance(fromToken, "from");
+      fetchTokenBalance(toToken, "to");
+      estimateSwap();
     });
 
     // --- Fetch and Display Token Balance ---
