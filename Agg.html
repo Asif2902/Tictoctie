@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dex Aggregator UI</title>
-  <!-- Include ethers.js -->
+  <title>Mon bridge Dex UI</title>
   <script src="https://ttt.0xasif.monster/ethers.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    /* Base styles */
+<style>   /* Base styles */
     body {
     background-image: url(https://mon.bridge.dex.0xasif.monster/monadxspiky.gif);
     background-size: cover;
@@ -178,7 +176,6 @@
   </header>
   <div class="container">
     <div class="swap-section">
-      <!-- From Token Section -->
       <div>
         <label>From</label>
         <div class="token-select" id="fromTokenSelect">
@@ -189,14 +186,9 @@
         </div>
         <div class="balance-display" id="fromBalanceDisplay">Balance: <span id="fromBalance">-</span></div>
         <div class="scrollable-tokens" id="fromTokenList">
-          <!-- Search input and token items will be injected here -->
         </div>
       </div>
-
-      <!-- Switch Pair Button -->
       <div class="switch-btn" id="switchPair"></div>
-
-      <!-- To Token Section -->
       <div>
         <label>To</label>
         <div class="token-select" id="toTokenSelect">
@@ -207,28 +199,21 @@
         </div>
         <div class="balance-display" id="toBalanceDisplay">Balance: <span id="toBalance">-</span></div>
         <div class="scrollable-tokens" id="toTokenList">
-          <!-- Search input and token items will be injected here -->
         </div>
       </div>
-
-      <!-- Input for Swap Amount (From) -->
+  
       <input type="number" id="fromAmount" placeholder="Amount" />
-
-      <!-- Info Box -->
       <div class="info-box" id="swapInfo">
         <div>Estimated Output: <span id="estimatedOutput">-</span></div>
         <div>Best Router: <span id="bestRouter">-</span></div>
         <div>Price Impact: <span id="priceImpact">-</span></div>
         <div>Aggregator Fee (0.1%): <span id="aggFee">-</span></div>
       </div>
-
-      <!-- Swap Button -->
       <button id="swapButton">Swap</button>
     </div>
   </div>
   <div id="notifications"></div>
   <script>
-    // --- Utility: Debounce function to cap RPC calls ---
     function debounce(func, delay) {
       let timer;
       return function(...args) {
@@ -236,25 +221,23 @@
         timer = setTimeout(() => func.apply(this, args), delay);
       }
     }
- // Routers names
- 
-function getRouterName(address) {
-  // Map the lower-case addresses to their names
-  const routerMap = {
-    "0xb6091233aacacba45225a2b2121bbac807af4255": "Octoswap",
-    "0xca810d095e90daae6e867c19df6d9a8c56db2c89": "Bean swap",
-    "0x4ba4be2fb69e2aa059a551ce5d609ef5818dd72f": "Taya finance"
-  };
-  const normalizedAddress = address.toLowerCase();
-  // Return the name if found, otherwise return the original address
-  return routerMap[normalizedAddress] || address;
-}
+    
+    function getRouterName(address) {
+      const routerMap = {
+        "0xb6091233aacacba45225a2b2121bbac807af4255": "Octoswap",
+        "0xca810d095e90daae6e867c19df6d9a8c56db2c89": "Bean swap",
+        "0x4ba4be2fb69e2aa059a551ce5d609ef5818dd72f": "Taya finance"
+      };
+      const normalizedAddress = address.toLowerCase();
+      return routerMap[normalizedAddress] || address;
+    }
+    
     // Chain and RPC Info
     const PRIMARY_RPC = "https://testnet-rpc.monad.xyz";
     const CHAIN_ID = 10143;
     const CHAIN_HEX = "0x279f";
     const CHAIN_EXPLORER = "https://testnet.monadexplorer.com/";
-
+    
     // Default token list (MON is native, WMON is wrapped)
     const defaultTokens = [
       { symbol: "USDC", address: "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea", decimals: 6, logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=023" },
@@ -266,15 +249,34 @@ function getRouterName(address) {
       { symbol: "shMon", address:"0x3a98250F98Dd388C211206983453837C8365BDc1",
         decimals: 18, logo: "https://i.imghippo.com/files/Osf1224Egs.png" },
       { symbol: "Bean", address:"0x268E4E24E0051EC27b3D27A95977E71cE6875a05",
-        decimals: 18, logo: "https://swap.bean.exchange/images/tokens/bean.png" }
+        decimals: 18, logo: "https://swap.bean.exchange/images/tokens/bean.png"
+        },
+        { symbol: "WBTC", address:"0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d",
+        decimals: 18,
+        logo:"https://imagedelivery.net/cBNDGgkrsEA-b_ixIp9SkQ/wbtc.png/public"},
+        { symbol: "WETH", address:"0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
+        decimals: 18, logo:
+        "https://imagedelivery.net/cBNDGgkrsEA-b_ixIp9SkQ/weth.jpg/public"},
+                
+        { symbol: "YAKI", address:"0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
+        decimals: 18, logo:
+        "https://imagedelivery.net/tWwhAahBw7afBzFUrX5mYQ/6679b698-a845-412b-504b-23463a3e1900/public"}, 
+        
+        { symbol: "DAK", address:"0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
+        decimals: 18, logo:
+        "https://imagedelivery.net/tWwhAahBw7afBzFUrX5mYQ/27759359-9374-4995-341c-b2636a432800/public"},
+        
+                { symbol: "CHOG", address:"0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
+        decimals: 18, logo:
+        "https://imagedelivery.net/tWwhAahBw7afBzFUrX5mYQ/5d1206c2-042c-4edc-9f8b-dcef2e9e8f00/public"}
+        
     ];
-
-    // Array for imported tokens saved in localStorage
+    
     let importedTokens = JSON.parse(localStorage.getItem('importedTokens')) || [];
-
+    
     let provider, signer, userAddress;
-    let aggregatorContract; // Instance of aggregator contract
-    const aggregatorAddress = "0x5Dc186D5fDDb5A2A49635F2b1C2459db904F87a5"; // Replace with your deployed contract address
+    let aggregatorContract;
+    const aggregatorAddress = "0x5Dc186D5fDDb5A2A49635F2b1C2459db904F87a5";
     const aggregatorABI = [
       "function getBestSwap(uint amountIn, address[] calldata path) external view returns (address routerAddress, uint amountOut)",
       "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, uint deadline) external payable returns (uint[] memory amounts)",
@@ -282,17 +284,15 @@ function getRouterName(address) {
       "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, uint deadline) external returns (uint[] memory amounts)",
       "function getPriceImpact(address router, address tokenIn, address tokenOut, uint amountIn) external view returns (uint priceImpact)"
     ];
-
-    // WMON wrapping interface (assumed similar to WETH)
+    
     const wmonABI = [
       "function deposit() payable",
       "function withdraw(uint wad)"
     ];
-
+    
     let fromToken = null;
     let toToken = null;
-
-    // --- Notification System ---
+    
     function notify(message, type="info") {
       const notifications = document.getElementById("notifications");
       const div = document.createElement("div");
@@ -301,12 +301,11 @@ function getRouterName(address) {
       notifications.appendChild(div);
       setTimeout(() => { div.remove(); }, 6000);
     }
-
-    // Format wallet address: e.g. 0x0***00
+      
     function formatAddress(addr) {
       return addr.substring(0, 6) + '***' + addr.substring(addr.length - 4);
     }
-
+    
     // --- Wallet Connection ---
     async function connectWallet() {
       if (window.ethereum) {
@@ -330,6 +329,12 @@ function getRouterName(address) {
             }
           }
           aggregatorContract = new ethers.Contract(aggregatorAddress, aggregatorABI, signer);
+          // Reset wallet warning flag once wallet is connected
+          window._walletWarningNotified = false;
+          // Refresh balances and price estimation for the selected tokens if available
+          if(fromToken) { fetchTokenBalance(fromToken, "from"); }
+          if(toToken) { fetchTokenBalance(toToken, "to"); }
+          estimateSwap();
         } catch (error) {
           console.error(error);
           notify("Wallet connection failed", "error");
@@ -339,7 +344,7 @@ function getRouterName(address) {
       }
     }
     document.getElementById("connectWallet").addEventListener("click", connectWallet);
-
+    
     // --- Import Token (called when user pastes a valid contract address in the search input) ---
     async function importToken(address) {
       try {
@@ -362,11 +367,11 @@ function getRouterName(address) {
         return null;
       }
     }
-
+    
     // --- Token List Loading with Search ---
     function loadTokens() {
       const tokens = [...defaultTokens, ...importedTokens];
-      
+        
       // From token list
       const fromList = document.getElementById("fromTokenList");
       fromList.innerHTML = "";
@@ -378,7 +383,7 @@ function getRouterName(address) {
       const fromItemsContainer = document.createElement("div");
       fromItemsContainer.className = "token-items";
       fromList.appendChild(fromItemsContainer);
-      
+        
       // To token list
       const toList = document.getElementById("toTokenList");
       toList.innerHTML = "";
@@ -390,7 +395,7 @@ function getRouterName(address) {
       const toItemsContainer = document.createElement("div");
       toItemsContainer.className = "token-items";
       toList.appendChild(toItemsContainer);
-      
+        
       // Helper: Render token items with a provided onSelect callback
       function renderTokenItems(container, tokensArray, onSelect) {
         container.innerHTML = "";
@@ -408,7 +413,7 @@ function getRouterName(address) {
           container.appendChild(item);
         });
       }
-      
+        
       // Set up search input for From list
       fromSearch.addEventListener("input", debounce(async function(e) {
         const term = e.target.value.trim().toLowerCase();
@@ -434,7 +439,7 @@ function getRouterName(address) {
           estimateSwap();
         });
       }, 300));
-      
+        
       // Set up search input for To list
       toSearch.addEventListener("input", debounce(async function(e) {
         const term = e.target.value.trim().toLowerCase();
@@ -460,7 +465,7 @@ function getRouterName(address) {
           estimateSwap();
         });
       }, 300));
-      
+        
       // Initially render full list for both From and To lists
       renderTokenItems(fromItemsContainer, tokens, (token) => {
         fromToken = token;
@@ -480,7 +485,7 @@ function getRouterName(address) {
       });
     }
     loadTokens();
-
+    
     // Allow re-opening token lists by clicking on token-select areas
     document.getElementById("fromTokenSelect").addEventListener("click", () => {
       const list = document.getElementById("fromTokenList");
@@ -490,7 +495,7 @@ function getRouterName(address) {
       const list = document.getElementById("toTokenList");
       list.style.display = (list.style.display === "none" || list.style.display === "") ? "block" : "none";
     });
-
+    
     // --- Default Pair: MON -> USDT ---
     function setDefaultPair() {
       const mon = defaultTokens.find(t => t.symbol === "MON");
@@ -502,12 +507,16 @@ function getRouterName(address) {
         document.getElementById("fromTokenSymbol").innerText = mon.symbol;
         document.getElementById("toTokenLogo").src = (usdt.logo && usdt.logo !== "?") ? usdt.logo : "https://ttt.0xasif.monster/pngtree-orange-round-faq-icon-for-help-and-questions-vector-png-image_48543232-removebg-preview.png";
         document.getElementById("toTokenSymbol").innerText = usdt.symbol;
-        fetchTokenBalance(mon, "from");
-        fetchTokenBalance(usdt, "to");
+        // If wallet is connected, fetch balances immediately; otherwise they will update once the wallet is connected.
+        if(provider && userAddress) {
+          fetchTokenBalance(mon, "from");
+          fetchTokenBalance(usdt, "to");
+          estimateSwap();
+        }
       }
     }
     setDefaultPair();
-
+    
     // --- Switch Pair Button ---
     document.getElementById("switchPair").addEventListener("click", () => {
       const temp = fromToken;
@@ -522,7 +531,7 @@ function getRouterName(address) {
       fetchTokenBalance(toToken, "to");
       estimateSwap();
     });
-
+    
     // --- Fetch and Display Token Balance ---
     async function fetchTokenBalance(token, side) {
       if(!provider || !userAddress) return;
@@ -543,11 +552,25 @@ function getRouterName(address) {
         }
       } catch (err) { console.error(err); }
     }
-
+    
     // --- Estimate Swap (debounced) ---
     async function estimateSwap() {
       const amountIn = document.getElementById("fromAmount").value;
       if(!fromToken || !toToken || !amountIn || isNaN(amountIn)) return;
+      
+      // Check if wallet is connected and aggregatorContract is available
+      if(!provider || !userAddress || !aggregatorContract) {
+        if(!window._walletWarningNotified) {
+          notify("Please connect wallet to check price", "error");
+          window._walletWarningNotified = true;
+        }
+        document.getElementById("estimatedOutput").innerText = "-";
+        document.getElementById("bestRouter").innerText = "-";
+        document.getElementById("priceImpact").innerText = "-";
+        document.getElementById("aggFee").innerText = "-";
+        return;
+      }
+      
       // If swapping between MON and WMON (either direction), force 1:1 rate.
       if ((fromToken.symbol === "MON" && toToken.symbol === "WMON") || (fromToken.symbol === "WMON" && toToken.symbol === "MON")) {
         document.getElementById("estimatedOutput").innerText = amountIn;
@@ -598,7 +621,7 @@ function getRouterName(address) {
       }
     }
     document.getElementById("fromAmount").addEventListener("input", debounce(estimateSwap, 200));
-
+    
     // --- Perform Swap (including wrapping/unwrapping if needed) ---
     async function performSwap() {
       if(!fromToken || !toToken) {
