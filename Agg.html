@@ -10,17 +10,24 @@
   <style>
     /* Base styles */
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #200052;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    background-image: url(https://media.discordapp.net/attachments/1036885738182168597/1332263994769145940/monadxspiky.gif?ex=67d09b48&is=67cf49c8&hm=17d8add8a4deecf08066a97bf9176466025ebceaff1fbd458ead7cdce5f687b8&=&width=1664&height=896);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #200052;
+    display: flex
+;
+    flex-direction: column;
+    align-items: center;
     }
     header {
       width: 100%;
-      background-color: #A0055D;
+      background-color: #200052;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       padding: 10px 20px;
       display: flex;
@@ -32,8 +39,8 @@
       margin-top: 20px;
       width: 90%;
       max-width: 500px;
-      color: white;
-      background-color: #0E100F;
+      color: black;
+      background-color: white;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 20px;
@@ -129,6 +136,9 @@
       border: 1px solid #ddd;
       border-radius: 50%;
     }
+    button#swapButton {
+    width: 100%;
+}
     .switch-btn:after {
       content: "↕";
       font-size: 24px;
@@ -226,7 +236,19 @@
         timer = setTimeout(() => func.apply(this, args), delay);
       }
     }
-
+ // Routers names
+ 
+function getRouterName(address) {
+  // Map the lower-case addresses to their names
+  const routerMap = {
+    "0xb6091233aacacba45225a2b2121bbac807af4255": "Octoswap",
+    "0xca810d095e90daae6e867c19df6d9a8c56db2c89": "Bean swap",
+    "0x4ba4be2fb69e2aa059a551ce5d609ef5818dd72f": "Taya finance"
+  };
+  const normalizedAddress = address.toLowerCase();
+  // Return the name if found, otherwise return the original address
+  return routerMap[normalizedAddress] || address;
+}
     // Chain and RPC Info
     const PRIMARY_RPC = "https://testnet-rpc.monad.xyz";
     const CHAIN_ID = 10143;
@@ -553,7 +575,7 @@
           const deadline = Math.floor(Date.now() / 1000) + 1800;
           const bestSwap = await aggregatorContract.getBestSwap(amountInParsed, path);
           document.getElementById("estimatedOutput").innerText = ethers.utils.formatUnits(bestSwap[1], toToken.decimals);
-          document.getElementById("bestRouter").innerText = bestSwap[0];
+          document.getElementById("bestRouter").innerText = getRouterName(bestSwap[0]);
           try {
             const priceImpact = await aggregatorContract.getPriceImpact(bestSwap[0], path[0], path[1], amountInParsed);
             document.getElementById("priceImpact").innerText = (parseFloat(ethers.utils.formatUnits(priceImpact, 18)) * 100).toFixed(2) + "%";
